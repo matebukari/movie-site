@@ -1,5 +1,5 @@
 // src/controllers/titlesController.js
-import { fetchShowsByCountry } from "../services/streamingAvailabilityService.js";
+import { fetchShowsByCountry } from "../services/watchmodeService.js";
 
 export const getShowsByCountry = async (req, res) => {
   try {
