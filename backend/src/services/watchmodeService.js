@@ -6,7 +6,7 @@ dotenv.config();
 const WATCHMODE_API_KEY = process.env.WATCHMODE_API_KEY;
 const BASE_URL = `https://api.watchmode.com/v1`;
 
-export const fetchShowsByCountry = async (country) => {
+export const fetchShowsByCountry = async (country, limit = 10) => {
   
   try {
     const response = await axios.get(`${BASE_URL}/list-titles/`,{
@@ -19,7 +19,7 @@ export const fetchShowsByCountry = async (country) => {
     const shows = response.data.titles || [];
 
     const detailedShows = await Promise.all(
-      shows.map(async (show) => {
+      shows.slice(0, limit).map(async (show) => {
         const sourcesResponse = await axios.get(`${BASE_URL}/title/${show.id}/sources/`, {
           params: {
             apiKey: WATCHMODE_API_KEY,
@@ -43,11 +43,6 @@ export const fetchShowsByCountry = async (country) => {
         };
       })
     );
-
-    detailedShows.forEach((show, index) => {
-      console.log(`${index + 1}. ${show.title} (${show.year})`);
-      show.platforms.forEach((p) => console.log(`   - ${p}`));
-    });
 
     return detailedShows;
 
