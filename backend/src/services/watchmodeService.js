@@ -8,13 +8,13 @@ const BASE_URL = `https://api.watchmode.com/v1`;
 
 const cache = new Map();
 
+/**
+ * Fetch list of shows available in a given country
+ */
 export const fetchShowsByCountry = async (country, limit = 10) => {
   const cacheKey = `${country}-${limit}`
 
-  if (cache.has(cacheKey)) {
-    console.log(`Serving cached data for ${country}`);
-    return cache.get(cacheKey);
-  }
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
   
   try {
     const response = await axios.get(`${BASE_URL}/list-titles/`,{
@@ -25,46 +25,46 @@ export const fetchShowsByCountry = async (country, limit = 10) => {
       },
     });
 
-    const shows = response.data.titles || [];
+    const shows = (response.data.titles || []).map((show) => ({
+      id: show.id,
+      title: show.title,
+      type: show.type,
+      year: show.year,
+    }));
 
-    const detailedShows = await Promise.all(
-      shows.map(async (show) => {
-        const sourcesResponse = await axios.get(`${BASE_URL}/title/${show.id}/sources/`, {
-          params: {
-            apiKey: WATCHMODE_API_KEY,
-            regions: country.toUpperCase(),
-          },
-        });
-
-        const sources = sourcesResponse.data || [];
-
-        const uniquePlatforms = [
-          ...new Set(sources.map((s) => s.name))
-        ];
-
-        return {
-          id: show.id,
-          title: show.title,
-          type: show.type,
-          year: show.year,
-          platforms: uniquePlatforms
-          
-        };
-      })
-    );
-
-    cache.set(cacheKey, detailedShows);
-
-    // (Optional) 4. Expire cache after 5 minutes
+    cache.set(cacheKey, shows);
     setTimeout(() => cache.delete(cacheKey), 5 * 60 * 1000);
-
-
-    return detailedShows;
-
-    
+    return shows;
   } catch (error) {
     console.error("Error fetching Watchmode data:", error.response?.data || error.message);
     throw new Error("Failed to fetch shows from Watchmode API");
   }
+};
+
+/**
+* Fetch streaming platforms for a specific show
+*/
+export const fetchShowSources = async (showId, country) => {
+  const cacheKey = `sources-${showId}-${country}`;
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
   
+  try {
+    const response = await axios.get(`${BASE_URL}/title/${showId}/sources/`, {
+      params: {
+        apiKey: WATCHMODE_API_KEY,
+        regions: country.toUpperCase(),
+      },
+    });
+
+    const sources = response.data || [];
+    const uniquePlatforms = [...new Set(sources.map((s) => s.name))];
+
+    cache.set(cacheKey, uniquePlatforms);
+    setTimeout(() => cache.delete(cacheKey), 10 * 60 * 1000);
+    return uniquePlatforms;
+    
+  } catch (error) {
+    console.error("Error fetching show sources:", error.response?.data || error.message);
+    throw new Error("Failed to fetch sources from Watchmode API");
+  }
 };
