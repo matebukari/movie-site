@@ -2,13 +2,12 @@ import React from "react";
 
 const countries = [
   { code: "us", name: "United States" },
-  { code: "gb", name: "United Kingdom" },
   { code: "ca", name: "Canada" },
-  { code: "de", name: "Germany" },
-  { code: "jp", name: "Japan" },
-  { code: "fr", name: "France" },
   { code: "au", name: "Australia" },
+  { code: "gb", name: "United Kingdom" },
   { code: "in", name: "India" },
+  { code: "es", name: "Spain" },
+  { code: "br", name: "Brazil" },
 ];
 
 function CountryDropdown({ country, setCountry }) {
