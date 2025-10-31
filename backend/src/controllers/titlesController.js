@@ -3,18 +3,20 @@ import { fetchShowsByCountry, fetchShowSources } from "../services/watchmodeServ
 
 export const getShowsByCountry = async (req, res) => {
   try {
-    const { country, limit } = req.query;
+    const { country, limit, page } = req.query;
 
     if (!country) {
       return res.status(400).json({ error: "Country is required (e.g. ?country=us)" });
     }
 
     const topLimit = limit ? parseInt(limit, 10) : 10;
+    const currentPage = page ? parseInt(page) : 1;
 
-    const shows = await fetchShowsByCountry(country, topLimit);
+    const shows = await fetchShowsByCountry(country, topLimit, currentPage);
 
     res.json({
       country,
+      page: currentPage,
       limit: topLimit,
       count: shows.length,
       results: shows

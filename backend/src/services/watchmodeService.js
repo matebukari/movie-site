@@ -11,8 +11,8 @@ const cache = new Map();
 /**
  * Fetch list of shows available in a given country
  */
-export const fetchShowsByCountry = async (country, limit = 10) => {
-  const cacheKey = `${country}-${limit}`
+export const fetchShowsByCountry = async (country, limit = 15, page = 1) => {
+  const cacheKey = `${country}-${limit}-${page}`
 
   if (cache.has(cacheKey)) return cache.get(cacheKey);
   
@@ -22,6 +22,7 @@ export const fetchShowsByCountry = async (country, limit = 10) => {
         apiKey: WATCHMODE_API_KEY,
         regions: country.toUpperCase(),
         limit,
+        page,
       },
     });
 
@@ -43,7 +44,7 @@ export const fetchShowsByCountry = async (country, limit = 10) => {
             backdrop: details.backdrop || null,
             poster: details.poster || null,
             image: details.backdrop || details.poster || null,
-                        trailer: details.trailer || null,
+            trailer: details.trailer || null,
 
           };
         } catch {

@@ -50,7 +50,7 @@ function ShowCard({ show, onClick }) {
         clearTimeout(hoverTimeout);
         if (!isMobile) setIsHovered(false);
       }}
-      className="relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition cursor-pointer"
+      className="relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-md transition-all duration-500 ease-in-out cursor-pointer hover:shadow-lg opacity-0 animate-fadeIn"
     >
       <div
         className={`transition-opacity duration-500 ${
