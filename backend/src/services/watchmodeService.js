@@ -43,6 +43,8 @@ export const fetchShowsByCountry = async (country, limit = 10) => {
             backdrop: details.backdrop || null,
             poster: details.poster || null,
             image: details.backdrop || details.poster || null,
+                        trailer: details.trailer || null,
+
           };
         } catch {
           // if a single call fails, continue gracefully
