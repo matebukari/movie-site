@@ -25,16 +25,43 @@ export const fetchShowsByCountry = async (country, limit = 10) => {
       },
     });
 
-    const shows = (response.data.titles || []).map((show) => ({
-      id: show.id,
-      title: show.title,
-      type: show.type,
-      year: show.year,
-    }));
+    const shows = response.data.titles || [];
 
-    cache.set(cacheKey, shows);
+    const detailedShows = await Promise.all(
+      shows.map(async (show) => {
+        try {
+          const detailRes = await axios.get(`${BASE_URL}/title/${show.id}/details/`, {
+            params: { apiKey: WATCHMODE_API_KEY },
+          });
+
+          const details = detailRes.data || {};
+          return {
+            id: show.id,
+            title: show.title,
+            type: show.type,
+            year: show.year,
+            backdrop: details.backdrop || null,
+            poster: details.poster || null,
+            image: details.backdrop || details.poster || null,
+          };
+        } catch {
+          // if a single call fails, continue gracefully
+          return {
+            id: show.id,
+            title: show.title,
+            type: show.type,
+            year: show.year,
+            backdrop: null,
+            poster: null,
+            image: null,
+          };
+        }
+      })
+    )
+
+    cache.set(cacheKey, detailedShows);
     setTimeout(() => cache.delete(cacheKey), 5 * 60 * 1000);
-    return shows;
+    return detailedShows;
   } catch (error) {
     console.error("Error fetching Watchmode data:", error.response?.data || error.message);
     throw new Error("Failed to fetch shows from Watchmode API");
