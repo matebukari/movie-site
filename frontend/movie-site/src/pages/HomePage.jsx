@@ -1,5 +1,6 @@
 import { useState } from "react";
 import CountryDropdown from "../components/CountryDropdown";
+import ShowCard from "../components/ShowCard";
 
 function HomePage() {
   const [country, setCountry] = useState("us");
@@ -27,6 +28,20 @@ function HomePage() {
     }
   };
 
+  const handleShowClick = async (show) => {
+    console.log("Selected show:", show);
+
+    try {
+      const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
+      const data = await res.json();
+      console.log("Streaming platforms:", data.platforms);
+
+      alert(`${show.title} is available on: ${data.platforms.join(", ")}`);
+    } catch (error) {
+      console.error("Error fetching show sources:", error);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-8">
       <h1 className="text-4xl font-bold mb-8 text-center">
@@ -51,17 +66,7 @@ function HomePage() {
       {/* Show Results */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {shows.map((show) => (
-          <div
-            key={show.id}
-            className="bg-gray-900 border border-gray-800 rounded-xl p-4 shadow-md hover:shadow-lg transition"
-          >
-            <h2 className="text-lg font-semibold mb-2">{show.title}</h2>
-            <p className="text-sm text-gray-400 mb-2">({show.year})</p>
-            <p className="text-sm text-gray-300">
-              <span className="font-semibold">Platforms:</span>{" "}
-              {show.platforms.length > 0 ? show.platforms.join(", ") : "None"}
-            </p>
-          </div>
+          <ShowCard key={show.id} show={show} onClick={() => handleShowClick(show)} />
         ))}
       </div>
 
