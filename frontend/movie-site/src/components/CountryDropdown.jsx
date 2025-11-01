@@ -13,12 +13,6 @@ const countries = [
 function CountryDropdown({ country, setCountry }) {
   return (
     <div>
-      <label
-        htmlFor="country"
-        className="block text-sm font-medium text-gray-300 mb-1"
-      >
-        Country
-      </label>
       <select
         id="country"
         value={country}

@@ -1,5 +1,20 @@
 // src/controllers/titlesController.js
-import { fetchShowsByCountry, fetchShowSources } from "../services/watchmodeService.js";
+import { fetchShowsByCountry, fetchShowsBySearch, fetchShowSources } from "../services/watchmodeService.js";
+
+export const getShowsBySearch = async (req, res) => {
+  try {
+    const { query, country, page } = req.query;
+    if (!query) {
+      return res.status(400).json({ error: "Search query is required (e.g. ?query=avatar)"});
+    }
+
+    const shows = await fetchShowsBySearch(query, country, page);
+    res.json({ query, count: shows.length, results: shows });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: "Server error fetching search results" });
+  }
+}
 
 export const getShowsByCountry = async (req, res) => {
   try {

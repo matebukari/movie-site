@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import CountryDropdown from "../components/CountryDropdown";
 import ShowCard from "../components/ShowCard";
 import SkeletonCard from "../components/SkeletonCard";
+import SearchBar from "../components/SearchBar";
 
 function HomePage() {
   const [country, setCountry] = useState("us");
+  const [searchQuery, setSearchQuery] = useState("");
   const [shows, setShows] = useState([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -14,15 +15,19 @@ function HomePage() {
   const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchShows = async (reset = false) => {
-    if (loading) return; // Prevent multiple requests
+    if (loading) return;
     setLoading(true);
     setError("");
 
     try {
       const currentPage = reset ? 1 : page;
-      const res = await fetch(
-        `${API_BASE}/titles/by-country?country=${country}&limit=12&page=${currentPage}`
-      );
+      const endpoint = searchQuery.trim() !== ""
+        ? `${API_BASE}/titles/search?query=${encodeURIComponent(
+          searchQuery
+          )}&country=${country}&page=${currentPage}`
+        : `${API_BASE}/titles/by-country?country=${country}&limit=12&page=${currentPage}`;
+
+      const res = await fetch(endpoint);
       const data = await res.json();
 
       if (!res.ok) throw new Error(data.error || "Failed to fetch shows");
@@ -49,7 +54,6 @@ function HomePage() {
     }
   };
 
-  // 🔁 When user scrolls near bottom, load more
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
@@ -65,7 +69,6 @@ function HomePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, hasMore, country]);
 
-  // 🔄 Reset when country changes
   useEffect(() => {
     setPage(1);
     setShows([]);
@@ -92,21 +95,19 @@ function HomePage() {
         🎬 Streaming Availability by Country
       </h1>
 
-      {/* Dropdown + Button */}
-      <div className="flex justify-center items-end gap-3 mb-8">
-        <CountryDropdown country={country} setCountry={setCountry} />
-        <button
-          onClick={() => fetchShows(true)} // reset to page 1
-          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md font-semibold"
-        >
-          Show Titles
-        </button>
+      <div className="flex justify-center mb-8">
+        <SearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          country={country}
+          setCountry={setCountry}
+          onSearch={() => fetchShows(true)}
+        />
       </div>
 
-      {/* Loading & Error */}
+
       {error && <p className="text-center text-red-400">{error}</p>}
 
-      {/* Show Results */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {shows.map((show) => (
           <ShowCard key={show.id} show={show} onClick={() => handleShowClick(show)} />

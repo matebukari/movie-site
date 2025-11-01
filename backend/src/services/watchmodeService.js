@@ -71,6 +71,89 @@ export const fetchShowsByCountry = async (country, limit = 15, page = 1) => {
   }
 };
 
+export const fetchShowsBySearch = async (query, country = "us", page = 1) => {
+  const cacheKey = `search-${query}-${country}-${page}`;
+  if (cache.has(cacheKey)) {
+    console.log(`Serving cached search results for "${query}" [${country}, page ${page}]`);
+    return cache.get(cacheKey);
+  }
+
+  try {
+    const doSearch = async (searchValue, fuzzy = false) => {
+      const response = await axios.get(`${BASE_URL}/search/`, {
+        params: {
+          apiKey: WATCHMODE_API_KEY,
+          search_field: "name",
+          search_value: searchValue,
+          fuzzy_search: fuzzy,
+          page,
+          limit: 12,
+          regions: country.toUpperCase(),
+        },
+      });
+      return response.data?.title_results || [];
+    };
+
+    // 🔹 Step 1: Try fuzzy search first
+    let shows = await doSearch(query, true);
+
+    // 🔹 Step 2: If no fuzzy match, try partial match
+    if (shows.length === 0 && query.includes(" ")) {
+      console.log(`No fuzzy results for "${query}", trying partial match...`);
+      const partialQuery = query.split(" ")[0]; // use first word
+      shows = await doSearch(partialQuery, true);
+    }
+
+    if (!shows || shows.length === 0) {
+      console.log(`❌ No results found for "${query}".`);
+      return [];
+    }
+
+    // 🔹 Step 3: Fetch show details
+    const detailedShows = await Promise.all(
+      shows.map(async (show) => {
+        try {
+          const detailRes = await axios.get(`${BASE_URL}/title/${show.id}/details/`, {
+            params: { apiKey: WATCHMODE_API_KEY },
+          });
+
+          const details = detailRes.data || {};
+          return {
+            id: show.id,
+            title: show.name || details.title,
+            type: show.type,
+            year: show.year,
+            poster: details.poster || show.image_url || null,
+            backdrop: details.backdrop || null,
+            trailer: details.trailer || null,
+          };
+        } catch (err) {
+          console.warn(`⚠️ Failed to fetch details for ${show.id}:`, err.message);
+          return {
+            id: show.id,
+            title: show.name,
+            type: show.type,
+            year: show.year,
+            poster: show.image_url || null,
+            backdrop: null,
+            trailer: null,
+          };
+        }
+      })
+    );
+
+    cache.set(cacheKey, detailedShows);
+    setTimeout(() => cache.delete(cacheKey), 10 * 60 * 1000);
+
+    return detailedShows;
+  } catch (error) {
+    console.error("🔥 Error searching Watchmode:", error.response?.data || error.message);
+    throw new Error("Failed to search shows from Watchmode API");
+  }
+};
+
+
+
 /**
 * Fetch streaming platforms for a specific show
 */
