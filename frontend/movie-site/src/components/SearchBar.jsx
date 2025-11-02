@@ -13,12 +13,18 @@ const countryOptions = [
 
 function SearchBar({ searchQuery, setSearchQuery, country, setCountry, onSearch }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState(countryOptions[0]);
   const dropdownRef = useRef(null);
 
-  const selectedCountry = countryOptions.find((c) => c.code === country) || countryOptions[0];
+  useEffect(() => {
+    const match = countryOptions.find((c) => c.code === country);
+    if (match) setSelectedCountry(match);
+  }, [country]);
 
   const handleSelect = (code) => {
     setCountry(code);
+    const match = countryOptions.find((c) => c.code === code);
+    if (match) setSelectedCountry(match); 
     setIsOpen(false);
   };
 

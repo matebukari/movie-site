@@ -11,8 +11,40 @@ function HomePage() {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState("");
+  const [countryDetected, setCountryDetected] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_URL;
+
+  useEffect(() => {
+    const detectUserCountry = async () => {
+      try {
+        // 🌍 Use a free IP geolocation API (no key required)
+        const res = await fetch("https://ipapi.co/json/");
+        const data = await res.json();
+
+        if (data && data.country_code) {
+          const detected = data.country_code.toLowerCase();
+          setCountry(detected);
+          setCountryDetected(true);
+          console.log("🌎 Detected country:", data.country_name);
+        } else {
+          console.warn("⚠️ Could not detect country, defaulting to US");
+          setCountry("us");
+          setCountryDetected(true);
+        }
+      } catch (error) {
+        console.error("Error detecting user location:", error);
+        setCountry("us");
+        setCountryDetected(true);
+      }
+    };
+
+    detectUserCountry();
+  }, []);
+
+
+  const MAX_SHOWS = 102;
+
 
   const fetchShows = async (reset = false) => {
     if (loading) return;
@@ -32,18 +64,18 @@ function HomePage() {
 
       if (!res.ok) throw new Error(data.error || "Failed to fetch shows");
 
-      if (data.results.length === 0) {
+      setShows((prev) => {
+        const newShows = reset ? data.results : [...prev, ...data.results];
+        const uniqueShows = Array.from(new Map(newShows.map((s) => [s.id, s])).values()); // dedupe
+        const limited = uniqueShows.slice(0, MAX_SHOWS);
+
+        if (limited.length >= MAX_SHOWS) setHasMore(false);
+        return limited;
+      });
+
+      if (data.results.length === 0 || shows.length >= MAX_SHOWS) {
         setHasMore(false);
       } else {
-        setShows((prev) =>{
-          const updated = reset ? data.results : [...prev, ...data.results]
-
-          if (updated.length >= 51){
-            return updated.slice(0, 51);
-          }
-          return updated;
-        }
-        );
         setPage(currentPage + 1);
       }
     } catch (err) {
@@ -55,7 +87,15 @@ function HomePage() {
   };
 
   useEffect(() => {
+    if (countryDetected) {
+      fetchShows(true);
+    }
+  }, [countryDetected]);
+
+  useEffect(() => {
     const handleScroll = () => {
+      if (!hasMore || loading) return; 
+
       const scrollY = window.scrollY;
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
