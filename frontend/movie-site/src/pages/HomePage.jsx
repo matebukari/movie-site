@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import ShowCard from "../components/ShowCard";
 import SkeletonCard from "../components/SkeletonCard";
-import SearchBar from "../components/SearchBar";
+import Navbar from "../components/Navbar";
 
 function HomePage() {
   const [country, setCountry] = useState("us");
@@ -91,42 +91,37 @@ function HomePage() {
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100 p-8">
-      <h1 className="text-4xl font-bold mb-8 text-center">
-        🎬 Streaming Availability by Country
-      </h1>
+      <Navbar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        country={country}
+        setCountry={setCountry}
+        onSearch={() => fetchShows(true)}
+      />
 
-      <div className="flex justify-center mb-8">
-        <SearchBar
-          searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
-          country={country}
-          setCountry={setCountry}
-          onSearch={() => fetchShows(true)}
-        />
-      </div>
+      <main className="p-8">
+        {error && <p className="text-center text-red-400">{error}</p>}
 
-
-      {error && <p className="text-center text-red-400">{error}</p>}
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {shows.map((show) => (
-          <ShowCard key={show.id} show={show} onClick={() => handleShowClick(show)} />
-        ))}
-      </div>
-
-      {loading && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonCard key={i} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {shows.map((show) => (
+            <ShowCard key={show.id} show={show} onClick={() => handleShowClick(show)} />
           ))}
         </div>
-      )}
 
-      {!loading && shows.length === 0 && !error && (
-        <p className="text-center mt-10 text-gray-400">
-          No shows found. Try another country.
-        </p>
-      )}
+        {loading && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <SkeletonCard key={i} />
+            ))}
+          </div>
+        )}
+
+        {!loading && shows.length === 0 && !error && (
+          <p className="text-center mt-10 text-gray-400">
+            No shows found. Try another country.
+          </p>
+        )}
+      </main>
     </div>
   );
 }
