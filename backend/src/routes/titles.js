@@ -1,6 +1,6 @@
 // src/routes/titles.js
 import express from "express";
-import { getShowsByCountry, getShowSources, getShowsBySearch } from "../controllers/titlesController.js";
+import { getShowsByCountry, getShowSources, getShowsBySearch, getNewTitles } from "../controllers/titlesController.js";
 
 const router = express.Router();
 
@@ -8,6 +8,8 @@ const router = express.Router();
 router.get("/by-country", getShowsByCountry);
 
 router.get("/search", getShowsBySearch);
+
+router.get("/new", getNewTitles);
 
 // GET /api/titles/:id/sources?country=us
 router.get("/:id/sources", getShowSources);

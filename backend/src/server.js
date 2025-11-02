@@ -21,4 +21,7 @@ app.get("/", (req, res) => {
 });
 
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+  console.log(`🔑 WATCHMODE_API_KEY: ${process.env.WATCHMODE_API_KEY ? "✅ Loaded" : "❌ Missing"}`)
+});
