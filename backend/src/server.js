@@ -2,16 +2,18 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import titlesRouter from "./routes/titles.js"
+import utilsRouter from "./routes/utils.js"
+
 
 dotenv.config();
-
-import titlesRouter from "./routes/titles.js"
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
+app.use("/api/utils", utilsRouter);
 
 // Routes
 app.use("/api/titles", titlesRouter);

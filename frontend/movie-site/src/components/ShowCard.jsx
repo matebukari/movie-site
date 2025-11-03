@@ -7,51 +7,82 @@ function ShowCard({ show, onClick }) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const videoRef = useRef(null);
   const iframeRef = useRef(null);
+  const hoverTimeout = useRef(null);
 
+  // 📱 Detect mobile view
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // 🎥 Identify YouTube trailers
   const isYouTubeTrailer =
     show.trailer?.includes("youtube.com") || show.trailer?.includes("youtu.be");
 
-  useEffect(() => {
-    if (!isHovered) {
+  const getYouTubeEmbedUrl = (url) => {
+    if (!url) return null;
+    let videoId = null;
+
+    if (url.includes("watch?v=")) {
+      videoId = url.split("v=")[1]?.split("&")[0];
+    } else if (url.includes("youtu.be/")) {
+      videoId = url.split("youtu.be/")[1]?.split("?")[0];
+    }
+
+    // 🧩 Hide recommended videos and clean branding
+    return videoId
+      ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&modestbranding=1&rel=0&showinfo=0`
+      : null;
+  };
+
+  const youtubeEmbedUrl = getYouTubeEmbedUrl(show.trailer);
+
+  // 🧭 Handle hover preview
+  const handleMouseEnter = () => {
+    if (!isMobile) {
+      clearTimeout(hoverTimeout.current);
+      hoverTimeout.current = setTimeout(() => setIsHovered(true), 500);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    clearTimeout(hoverTimeout.current);
+    if (!isMobile) {
+      setIsHovered(false);
+
+      // 🎞️ Reset video trailer (MP4)
       if (videoRef.current) {
         videoRef.current.pause();
-        videoRef.current.currentTime = 0; 
+        videoRef.current.currentTime = 0;
       }
 
+      // 📺 Reset YouTube trailer (reload iframe)
       if (iframeRef.current) {
         const src = iframeRef.current.src;
-        iframeRef.current.src = ""; 
-        iframeRef.current.src = src; 
+        iframeRef.current.src = "";
+        iframeRef.current.src = src;
       }
     }
-  }, [isHovered]);
+  };
+
+  const handleCardClick = (e) => {
+    e.stopPropagation();
+    if (onClick) onClick(show);
+  };
 
   const imageSrc = isMobile
     ? show.poster || show.backdrop
     : show.backdrop || show.poster;
 
-  let hoverTimeout;
-
   return (
     <div
-      onClick={() => onClick && onClick(show)}
-      onMouseEnter={() => {
-        if (!isMobile) {
-          hoverTimeout = setTimeout(() => setIsHovered(true), 800)
-        }
-      }}
-      onMouseLeave={() => {
-        clearTimeout(hoverTimeout);
-        if (!isMobile) setIsHovered(false);
-      }}
+      onClick={handleCardClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
       className="relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-md transition-all duration-500 ease-in-out cursor-pointer hover:shadow-lg opacity-0 animate-fadeIn"
     >
+      {/* 🖼️ Static Poster / Backdrop */}
       <div
         className={`transition-opacity duration-500 ${
           isHovered && show.trailer ? "opacity-0" : "opacity-100"
@@ -65,18 +96,17 @@ function ShowCard({ show, onClick }) {
         />
       </div>
 
+      {/* 🎬 Trailer Preview on Hover (non-clickable layer) */}
       {show.trailer && (
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
-            isHovered ? "opacity-100" : "opacity-0"
+            isHovered ? "opacity-100 pointer-events-none" : "opacity-0 pointer-events-none"
           }`}
         >
           {isYouTubeTrailer ? (
             <iframe
               ref={iframeRef}
-              src={`${show.trailer.replace("watch?v=", "embed/")}?autoplay=1&mute=1&loop=1&controls=0&playlist=${
-                show.trailer.split("v=")[1]
-              }`}
+              src={youtubeEmbedUrl}
               title={`${show.title} trailer`}
               className="w-full h-full object-cover"
               allow="autoplay; encrypted-media"
@@ -85,7 +115,7 @@ function ShowCard({ show, onClick }) {
             <video
               ref={videoRef}
               src={show.trailer}
-              autoPlay
+              autoPlay={isHovered}
               loop
               muted
               playsInline
@@ -95,12 +125,12 @@ function ShowCard({ show, onClick }) {
         </div>
       )}
 
-      <div className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 ${
-        isHovered ? "opacity-0" : "opacity-100"
-      }`}>
-        <h2 className="text-lg font-semibold text-white truncate">
-          {show.title}
-        </h2>
+      {/* 🧾 Info overlay */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 
+          transition-opacity duration-500 ${isHovered ? "opacity-0" : "opacity-100"}`}
+      >
+        <h2 className="text-lg font-semibold text-white truncate">{show.title}</h2>
         <p className="text-sm text-gray-300">
           {show.year ? `(${show.year})` : ""} • {show.type || ""}
         </p>
