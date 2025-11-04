@@ -2,41 +2,45 @@ import { useState, useEffect } from "react";
 import ShowCard from "../components/ShowCard";
 import SkeletonCard from "../components/SkeletonCard";
 import Navbar from "../components/Navbar";
+import { useCountry } from "../context/CountryContext";
 
 function HomePage() {
-  const [country, setCountry] = useState("us");
+  const { country, countryDetected } = useCountry();
   const [searchQuery, setSearchQuery] = useState("");
   const [shows, setShows] = useState([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState("");
-  const [countryDetected, setCountryDetected] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_URL;
   const MAX_SHOWS = 102;
-  const PAGE_LIMIT = 20; // Fetch 20 per page
+  const PAGE_LIMIT = 20;
 
-  /* 🌍 Detect User Country via backend proxy (uses ipwho.is) */
+  /* 🧠 Try to load cached shows on mount */
   useEffect(() => {
-    const detectUserCountry = async () => {
-      try {
-        const res = await fetch(`${API_BASE}/utils/detect-country`);
-        const data = await res.json();
-        setCountry(data.country || "us");
-      } catch (err) {
-        console.warn("⚠️ Country detection failed, defaulting to US");
-        setCountry("us");
-      } finally {
-        setCountryDetected(true);
-      }
-    };
-    detectUserCountry();
-  }, []);
+    const cacheKey = `shows-${country}`;
+    const cached = sessionStorage.getItem(cacheKey);
 
-  /* 🎬 Fetch Shows (by country or search) */
+    if (cached) {
+      try {
+        const parsed = JSON.parse(cached);
+        if (parsed && Array.isArray(parsed.results) && parsed.country === country) {
+          console.log("⚡ Loaded shows from session cache");
+          setShows(parsed.results);
+          setPage(parsed.nextPage || 6);
+          setHasMore(parsed.hasMore ?? true);
+          return; // ✅ Stop here (no re-fetch)
+        }
+      } catch {
+        sessionStorage.removeItem(cacheKey); // corrupted cache
+      }
+    }
+  }, [country]);
+
+  /** 🎬 Fetch shows */
   const fetchShows = async (reset = false, customPage = null) => {
-    if (loading) return;
+    if (loading || !countryDetected) return;
     setLoading(true);
     setError("");
 
@@ -57,6 +61,18 @@ function HomePage() {
         const unique = Array.from(new Map(newShows.map((s) => [s.id, s])).values());
         const limited = unique.slice(0, MAX_SHOWS);
         setHasMore(limited.length < MAX_SHOWS && data.results.length > 0);
+
+        // 💾 Save to session cache
+        sessionStorage.setItem(
+          `shows-${country}`,
+          JSON.stringify({
+            country,
+            results: limited,
+            nextPage: currentPage + 1,
+            hasMore: limited.length < MAX_SHOWS,
+          })
+        );
+
         return limited;
       });
 
@@ -69,23 +85,25 @@ function HomePage() {
     }
   };
 
-  /* 🚀 Load multiple pages in parallel on first load */
+  /** 🚀 Load initial 5 pages in parallel */
   useEffect(() => {
-    if (!countryDetected) return;
+    if (!countryDetected || !country) return;
 
-    const loadInitialShows = async () => {
+    const cacheKey = `shows-${country}`;
+    const cached = sessionStorage.getItem(cacheKey);
+    if (cached) return; // ✅ Skip if already cached
+
+    const loadInitial = async () => {
       setLoading(true);
+      setError("");
       setShows([]);
       setPage(1);
       setHasMore(true);
 
       try {
-        // Fetch first 5 pages in parallel (20 x 5 = 100)
         const pages = [1, 2, 3, 4, 5];
         const fetches = pages.map((p) =>
-          fetch(`${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${p}`).then((res) =>
-            res.json()
-          )
+          fetch(`${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${p}`).then((r) => r.json())
         );
 
         const results = await Promise.all(fetches);
@@ -94,35 +112,44 @@ function HomePage() {
         const limited = unique.slice(0, MAX_SHOWS);
 
         setShows(limited);
-        setPage(6); // Next fetch will start from page 6
+        setPage(6);
         setHasMore(limited.length < MAX_SHOWS);
+
+        // 💾 Save to session cache
+        sessionStorage.setItem(
+          cacheKey,
+          JSON.stringify({
+            country,
+            results: limited,
+            nextPage: 6,
+            hasMore: limited.length < MAX_SHOWS,
+          })
+        );
       } catch (err) {
-        console.error("❌ Parallel preload failed:", err);
-        setError("Failed to load initial shows");
+        console.error("❌ Initial load failed:", err);
+        setError("Failed to load shows");
       } finally {
         setLoading(false);
       }
     };
 
-    loadInitialShows();
+    loadInitial();
   }, [countryDetected, country]);
 
-  /* 🧭 Infinite scroll for more content */
+  /** 🧭 Infinite scroll */
   useEffect(() => {
     const handleScroll = () => {
       if (loading || !hasMore) return;
-
-      const nearBottom =
-        window.innerHeight + window.scrollY >= document.body.offsetHeight - 400;
-
-      if (nearBottom) fetchShows();
+      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 400) {
+        fetchShows();
+      }
     };
 
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, hasMore, country]);
 
-  /* 🎞️ Show platform popup */
+  /** 🎞️ Show platforms */
   const handleShowClick = async (show) => {
     try {
       const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
@@ -133,13 +160,20 @@ function HomePage() {
     }
   };
 
+  /** 🕐 Waiting for detection */
+  if (!countryDetected) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
+        Detecting your location...
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        country={country}
-        setCountry={setCountry}
         onSearch={() => fetchShows(true)}
       />
 
@@ -165,7 +199,7 @@ function HomePage() {
         {/* Empty state */}
         {!loading && shows.length === 0 && !error && (
           <p className="text-center mt-10 text-gray-400">
-            No shows found. Try another country.
+            No shows found for your region.
           </p>
         )}
       </main>

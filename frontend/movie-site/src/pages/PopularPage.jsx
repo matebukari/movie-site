@@ -4,7 +4,7 @@ import SkeletonCard from "../components/SkeletonCard";
 import Navbar from "../components/Navbar";
 import { useCountry } from "../context/CountryContext";
 
-function NewPage() {
+function PopularPage() {
   const { country, countryDetected } = useCountry();
   const [shows, setShows] = useState([]);
   const [page, setPage] = useState(1);
@@ -16,9 +16,9 @@ function NewPage() {
   const MAX_SHOWS = 102;
   const PAGE_LIMIT = 20;
 
-  /** ⚡ Load valid cache if available */
+  /** ⚡ Load from cache if available and valid */
   useEffect(() => {
-    const cacheKey = `new-${country}`;
+    const cacheKey = `popular-${country}`;
     const cached = sessionStorage.getItem(cacheKey);
 
     if (cached) {
@@ -30,11 +30,11 @@ function NewPage() {
           parsed.results.length > 0 &&
           parsed.country === country
         ) {
-          console.log(`⚡ Loaded ${parsed.results.length} new releases from cache for ${country}`);
+          console.log(`⚡ Loaded ${parsed.results.length} popular shows from cache for ${country}`);
           setShows(parsed.results);
           setPage(parsed.nextPage || 6);
           setHasMore(parsed.hasMore ?? true);
-          return; // ✅ Skip fetching if valid cache found
+          return; // ✅ Skip fresh fetch
         }
       } catch {
         console.warn("🧹 Invalid cache, clearing...");
@@ -43,22 +43,22 @@ function NewPage() {
     }
   }, [country]);
 
-  /** 🎬 Fetch new releases */
-  const fetchNewTitles = async (reset = false, customPage = null) => {
+  /** 🎬 Fetch more popular titles */
+  const fetchPopular = async (reset = false, customPage = null) => {
     if (loading || !countryDetected) return;
     setLoading(true);
     setError("");
 
     try {
       const currentPage = customPage || (reset ? 1 : page);
-      const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
+      const endpoint = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
       const res = await fetch(endpoint);
       const data = await res.json();
 
-      if (!res.ok) throw new Error(data.error || "Failed to fetch new releases");
+      if (!res.ok) throw new Error(data.error || "Failed to fetch popular shows");
 
-      console.log(`🎬 Received ${data.results?.length || 0} new releases for ${country} (page ${currentPage})`);
+      console.log(`🎬 Received ${data.results?.length || 0} shows for ${country} (page ${currentPage})`);
 
       setShows((prev) => {
         const newShows = reset ? data.results : [...prev, ...data.results];
@@ -67,7 +67,7 @@ function NewPage() {
         const hasMoreResults = limited.length < MAX_SHOWS && data.results.length > 0;
 
         sessionStorage.setItem(
-          `new-${country}`,
+          `popular-${country}`,
           JSON.stringify({
             country,
             results: limited,
@@ -82,27 +82,27 @@ function NewPage() {
 
       setPage((prev) => prev + 1);
     } catch (err) {
-      console.error("❌ Error fetching new releases:", err);
-      setError("Error fetching new releases");
+      console.error("❌ Error fetching popular shows:", err);
+      setError("Error fetching popular shows");
     } finally {
       setLoading(false);
     }
   };
 
-  /** 🚀 Parallel preload first 5 pages */
+  /** 🚀 Parallel preload for first 5 pages */
   useEffect(() => {
-    console.log("🚀 New releases preload triggered:", { countryDetected, country });
-    if (!country) return;
+    console.log("🚀 Popular preload triggered:", { countryDetected, country });
+    if (!country) return; // ✅ Start even before detection finishes
 
-    const cacheKey = `new-${country}`;
+    const cacheKey = `popular-${country}`;
     const cached = sessionStorage.getItem(cacheKey);
     if (cached) {
       const parsed = JSON.parse(cached);
-      if (parsed?.results?.length > 0) return; // ✅ Use cache if valid
+      if (parsed?.results?.length > 0) return; // ✅ Skip reload if cache valid
     }
 
     const loadInitial = async () => {
-      console.log(`📡 Fetching new releases for ${country}`);
+      console.log(`📡 Fetching popular shows for ${country}`);
       setLoading(true);
       setError("");
       setShows([]);
@@ -112,7 +112,7 @@ function NewPage() {
       try {
         const pages = [1, 2, 3, 4, 5];
         const fetches = pages.map((p) =>
-          fetch(`${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${p}`).then((r) => r.json())
+          fetch(`${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=${p}`).then((r) => r.json())
         );
 
         const results = await Promise.all(fetches);
@@ -120,7 +120,7 @@ function NewPage() {
         const unique = Array.from(new Map(allShows.map((s) => [s.id, s])).values());
         const limited = unique.slice(0, MAX_SHOWS);
 
-        console.log(`✅ Preloaded ${limited.length} new releases for ${country}`);
+        console.log(`✅ Preloaded ${limited.length} shows for ${country}`);
 
         setShows(limited);
         setPage(6);
@@ -136,8 +136,8 @@ function NewPage() {
           })
         );
       } catch (err) {
-        console.error("❌ Failed to preload new releases:", err);
-        setError("Failed to load new releases");
+        console.error("❌ Failed to preload popular shows:", err);
+        setError("Failed to load popular shows");
       } finally {
         setLoading(false);
       }
@@ -151,7 +151,7 @@ function NewPage() {
     const handleScroll = () => {
       if (loading || !hasMore) return;
       if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 400) {
-        fetchNewTitles();
+        fetchPopular();
       }
     };
 
@@ -159,7 +159,6 @@ function NewPage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, hasMore, country]);
 
-  /** 🕐 Wait for country detection */
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -174,19 +173,19 @@ function NewPage() {
 
       <main className="p-8">
         <h1 className="text-3xl font-semibold mb-6 text-center text-blue-400">
-          🎬 New Releases in {country?.toUpperCase() || "US"}
+          🌟 Popular in {country?.toUpperCase() || "US"}
         </h1>
 
         {error && <p className="text-center text-red-400">{error}</p>}
 
-        {/* Grid of shows */}
+        {/* Show Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {shows.map((show) => (
             <ShowCard key={show.id} show={show} />
           ))}
         </div>
 
-        {/* Skeleton loader */}
+        {/* Skeleton Loader */}
         {loading && shows.length === 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -195,13 +194,15 @@ function NewPage() {
           </div>
         )}
 
-        {/* Empty state */}
+        {/* Empty State */}
         {!loading && shows.length === 0 && !error && (
-          <p className="text-center mt-10 text-gray-400">No new releases found.</p>
+          <p className="text-center mt-10 text-gray-400">
+            No popular shows found.
+          </p>
         )}
       </main>
     </div>
   );
 }
 
-export default NewPage;
+export default PopularPage;

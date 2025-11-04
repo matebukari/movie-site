@@ -4,6 +4,8 @@ import cors from "cors";
 import dotenv from "dotenv";
 import titlesRouter from "./routes/titles.js"
 import utilsRouter from "./routes/utils.js"
+import compression from "compression";
+import { fetchShowsByCountry } from "./services/fetchers/byCountry.js";
 
 
 dotenv.config();
@@ -11,6 +13,7 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 app.use("/api/utils", utilsRouter);
@@ -25,5 +28,12 @@ app.get("/", (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
-  console.log(`🔑 WATCHMODE_API_KEY: ${process.env.WATCHMODE_API_KEY ? "✅ Loaded" : "❌ Missing"}`)
 });
+
+(async () => {
+  try {
+    await fetchShowsByCountry("us", 20, 1);
+  } catch (e) {
+    console.warn("⚠️ Cache warm failed:", e.message);
+  }
+})();

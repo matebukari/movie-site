@@ -1,9 +1,13 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import SearchBar from "./SearchBar";
+import { useCountry } from "../context/CountryContext"; // ✅ Import global context
+import { Link, useLocation } from "react-router-dom"; // ✅ Better navigation without reloads
 
-function Navbar({ searchQuery, setSearchQuery, country, setCountry, onSearch }) {
+function Navbar({ searchQuery, setSearchQuery, onSearch }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { country, setCountry } = useCountry(); // ✅ Shared across all pages
+  const location = useLocation();
 
   const navItems = [
     { name: "Home", href: "/" },
@@ -11,10 +15,15 @@ function Navbar({ searchQuery, setSearchQuery, country, setCountry, onSearch }) 
     { name: "Popular", href: "/popular" },
   ];
 
-  return(
+  return (
     <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4 sticky top-0 z-50 shadow-md">
       <div className="flex justify-between items-center max-w-7xl mx-auto">
-        <div className="text-2xl font-bold text-blue-500">🎬 StreamScope</div>
+        {/* 🔹 Brand Logo */}
+        <Link to="/" className="text-2xl font-bold text-blue-500">
+          🎬 StreamScope
+        </Link>
+
+        {/* 🔍 Center Search (desktop) */}
         <div className="hidden lg:flex flex-1 justify-center px-6">
           <SearchBar
             searchQuery={searchQuery}
@@ -25,18 +34,22 @@ function Navbar({ searchQuery, setSearchQuery, country, setCountry, onSearch }) 
           />
         </div>
 
+        {/* 🧭 Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-6">
           {navItems.map((item) => (
-            <a 
+            <Link
               key={item.name}
-              href={item.href}
-              className="text-gray-300 hover:text-blue-400 transition"
+              to={item.href}
+              className={`text-gray-300 hover:text-blue-400 transition ${
+                location.pathname === item.href ? "text-blue-400 font-semibold" : ""
+              }`}
             >
               {item.name}
-            </a>
+            </Link>
           ))}
         </div>
 
+        {/* ☰ Mobile Menu Button */}
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           className="md:hidden text-gray-300 hover:text-blue-400"
@@ -45,17 +58,20 @@ function Navbar({ searchQuery, setSearchQuery, country, setCountry, onSearch }) 
         </button>
       </div>
 
+      {/* 📱 Mobile Menu */}
       {isMenuOpen && (
         <div className="md:hidden mt-4 space-y-4 text-center border-t border-gray-800 pt-4">
           {navItems.map((item) => (
-            <a
-              key={item.name} 
-              href={item.href}
-              className="block text-gray-300 hover:text-blue-400 transition"
+            <Link
+              key={item.name}
+              to={item.href}
               onClick={() => setIsMenuOpen(false)}
+              className={`block text-gray-300 hover:text-blue-400 transition ${
+                location.pathname === item.href ? "text-blue-400 font-semibold" : ""
+              }`}
             >
               {item.name}
-            </a>
+            </Link>
           ))}
           <div className="flex justify-center">
             <SearchBar

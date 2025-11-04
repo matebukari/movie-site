@@ -4,31 +4,51 @@ import { mergeDetails } from "../mappers/showMapper.js";
 import { getCache, setCache } from "../api/cache.js";
 
 export const fetchShowsByCountry = async (country, limit = 10, page = 1) => {
+
   const cacheKey = `country-${country}-${page}`;
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
+  const cached = await getCache(cacheKey); // ✅ FIXED — await here
 
-  const { data } = await getWatchmodeList({
-    regions: country.toUpperCase(),
-    limit,
-    page,
-  });
+  if (Array.isArray(cached) && cached.length > 0) {
+    return cached;
+  }
 
-  const shows = data.titles || [];
+  try {
+    const { data } = await getWatchmodeList({
+      regions: country?.toUpperCase() || "US",
+      limit,
+      page,
+    });
 
-  const detailed = await Promise.all(
-    shows.map(async (wm) => {
-      const tmdb = await fetchTMDBDetails({
-        tmdb_id: wm.tmdb_id,
-        title: wm.title,
-        type: wm.type,
-      });
-      return mergeDetails(wm, tmdb);
-    })
-  );
 
-  const results = detailed.filter((show) => show.poster);
+    if (!data || !Array.isArray(data.titles)) {
+      console.warn("⚠️ Unexpected Watchmode data format:", data);
+      return [];
+    }
 
-  setCache(cacheKey, results);
-  return results;
+    const shows = data.titles;
+
+    const detailed = await Promise.all(
+      shows.map(async (wm) => {
+        try {
+          const tmdb = await fetchTMDBDetails({
+            tmdb_id: wm.tmdb_id,
+            title: wm.title,
+            type: wm.type,
+          });
+          return mergeDetails(wm, tmdb);
+        } catch (err) {
+          console.warn(`⚠️ TMDB fetch failed for ${wm.title}:`, err.message);
+          return null;
+        }
+      })
+    );
+
+    const results = detailed.filter((show) => show?.poster);
+    await setCache(cacheKey, results); // ✅ FIXED — await cache save
+
+    return results;
+  } catch (err) {
+    console.error("❌ Error inside fetchShowsByCountry:", err);
+    return [];
+  }
 };

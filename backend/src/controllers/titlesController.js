@@ -32,21 +32,39 @@ export const getShowsBySearch = async (req, res) => {
 // 🌍 Get shows available in a country
 export const getShowsByCountry = async (req, res) => {
   try {
-    const { country = "us", limit = 10, page = 1 } = req.query;
-    const shows = await fetchShowsByCountry(country, Number(limit), Number(page));
+    const { country, limit, page } = req.query;
+
+    if (!country) {
+      return res.status(400).json({ error: "Country is required (e.g. ?country=us)" });
+    }
+
+    const topLimit = limit ? parseInt(limit, 10) : 10;
+    const currentPage = page ? parseInt(page) : 1;
+
+    const shows = await fetchShowsByCountry(country, topLimit, currentPage);
+
+    if (!Array.isArray(shows)) {
+      console.error("❌ fetchShowsByCountry returned invalid:", shows);
+      return res.status(500).json({ error: "Internal data format error" });
+    }
 
     res.json({
       country,
-      page: Number(page),
-      limit: Number(limit),
+      page: currentPage,
+      limit: topLimit,
       count: shows.length,
       results: shows,
     });
   } catch (error) {
-    console.error("❌ Error in getShowsByCountry:", error.message);
+    console.error("❌ Error in getShowsByCountry:", {
+      message: error.message,
+      stack: error.stack,
+      details: error.response?.data || error,
+    });
     res.status(500).json({ error: "Server error fetching shows" });
   }
 };
+
 
 // 🎬 Get available streaming platforms for a show
 export const getShowSources = async (req, res) => {
@@ -68,12 +86,18 @@ export const getShowSources = async (req, res) => {
 export const getNewTitles = async (req, res) => {
   try {
     const { country = "us", limit = 15, page = 1 } = req.query;
-    const newReleases = await fetchNewReleases(country, Number(limit), Number(page));
+
+    const newReleases = await fetchNewReleases(country, limit, page);
+
+    if (!Array.isArray(newReleases)) {
+      console.error("⚠️ fetchNewReleases returned invalid:", newReleases);
+      return res.status(500).json({ error: "Internal data format error" });
+    }
 
     res.json({
       country,
-      limit: Number(limit),
-      page: Number(page),
+      limit,
+      page,
       count: newReleases.length,
       results: newReleases,
     });
@@ -82,6 +106,7 @@ export const getNewTitles = async (req, res) => {
     res.status(500).json({ error: "Server error fetching new releases" });
   }
 };
+
 
 // 🔥 Get popular shows (based on Watchmode + TMDB)
 export const getPopularTitles = async (req, res) => {

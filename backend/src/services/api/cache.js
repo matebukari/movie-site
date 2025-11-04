@@ -1,9 +1,21 @@
-// Simple in-memory cache shared by all services
-const cache = new Map();
+// src/services/api/cache.js
+import Keyv from "keyv";
 
-export const getCache = (key) => cache.get(key);
+// ⚙️ Store cache on disk; swap URL for Redis if you want later
+const keyv = new Keyv("sqlite://cache.sqlite");
 
-export const setCache = (key, value, ttl = 5 * 60 * 1000) => {
-  cache.set(key, value);
-  setTimeout(() => cache.delete(key), ttl);
+export const getCache = async (key) => {
+  try {
+    return await keyv.get(key);
+  } catch {
+    return null;
+  }
+};
+
+export const setCache = async (key, value, ttl = 1000 * 60 * 10) => {
+  try {
+    await keyv.set(key, value, ttl);
+  } catch (err) {
+    console.warn("Cache save failed:", err.message);
+  }
 };
