@@ -5,30 +5,51 @@ import { getCache, setCache } from "../api/cache.js";
 
 export const fetchShowsBySearch = async (query, country = "us", page = 1) => {
   const cacheKey = `search-${query}-${country}-${page}`;
-  const cached = getCache(cacheKey);
-  if (cached) return cached;
+  const cached = await getCache(cacheKey); // ✅ await here
+  if (cached) {
+    console.log(`⚡ Returning cached search results for "${query}" (${country})`);
+    return cached;
+  }
 
-  const { data } = await getWatchmodeSearch({
-    search_field: "name",
-    search_value: query,
-    fuzzy_search: true,
-    page,
-    limit: 12,
-    regions: country.toUpperCase(),
-  });
+  try {
+    const { data } = await getWatchmodeSearch({
+      search_field: "name",
+      search_value: query,
+      fuzzy_search: true,
+      page,
+      limit: 12,
+      regions: country.toUpperCase(),
+    });
 
-  const shows = data.title_results || [];
-  const results = await Promise.all(
-    shows.map(async (wm) => {
-      const tmdb = await fetchTMDBDetails({
-        tmdb_id: wm.tmdb_id,
-        title: wm.name,
-        type: wm.type,
-      });
-      return mergeDetails(wm, tmdb);
-    })
-  );
+    if (!data || !Array.isArray(data.title_results)) {
+      console.warn("⚠️ Watchmode returned unexpected search data:", data);
+      return [];
+    }
 
-  setCache(cacheKey, results);
-  return results;
+    const shows = data.title_results;
+
+    const results = await Promise.all(
+      shows.map(async (wm) => {
+        try {
+          const tmdb = await fetchTMDBDetails({
+            tmdb_id: wm.tmdb_id,
+            title: wm.name,
+            type: wm.type,
+          });
+          return mergeDetails(wm, tmdb);
+        } catch (err) {
+          console.warn(`⚠️ TMDB fetch failed for ${wm.name}: ${err.message}`);
+          return null;
+        }
+      })
+    );
+
+    const filtered = results.filter((s) => s?.poster);
+    await setCache(cacheKey, filtered);
+    console.log(`✅ Cached ${filtered.length} search results for "${query}" (${country})`);
+    return filtered;
+  } catch (err) {
+    console.error("❌ Error in fetchShowsBySearch:", err.message);
+    return []; // ✅ Always return an array to prevent crashes
+  }
 };

@@ -1,0 +1,227 @@
+import React, { useEffect, useState } from "react";
+import { X, Globe2, PlayCircle } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+function ShowModal({ show, country, onClose }) {
+  const [details, setDetails] = useState(null);
+  const [platforms, setPlatforms] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const API_BASE = import.meta.env.VITE_API_URL;
+
+  console.log("🎞️ ShowModal received show:", show);
+
+  // 🧩 Platform logo mapping (add more as needed)
+  const platformLogos = {
+    "Netflix": "/logos/netflix.svg",
+    "Hulu": "/logos/hulu.svg",
+    "Disney+": "/logos/disneyplus.svg",
+    "Amazon Prime Video": "/logos/primevideo.svg",
+    "Amazon": "/logos/primevideo.svg",
+    "Apple TV+": "/logos/appletv.svg",
+    "AppleTV": "/logos/appletv.svg",
+    "HBO Max": "/logos/hbomax.svg",
+    "Max": "/logos/hbomax.svg",
+    "Peacock": "/logos/peacock.svg",
+    "Paramount+": "/logos/paramountplus.svg",
+    "YouTube": "/logos/youtube.svg",
+    "Rakuten TV": "/logos/rakuten.svg",
+    "Sky Store": "/logos/skystore.svg",
+    "Crave": "/logos/crave.svg",
+    "Now TV": "/logos/nowtv.svg",
+  };
+
+  // ⌨️ Close modal on ESC
+  useEffect(() => {
+    const handleKey = (e) => e.key === "Escape" && onClose();
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [onClose]);
+
+  // 🎬 Fetch only streaming sources from backend
+  useEffect(() => {
+    const fetchPlatforms = async () => {
+      try {
+        setLoading(true);
+        const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
+        const data = await res.json();
+
+        setPlatforms(data.platforms || []);
+        setDetails(show); // ✅ Use already-merged show data
+      } catch (err) {
+        console.error("❌ Failed to fetch show platforms:", err);
+        setDetails(show);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (show?.id) fetchPlatforms();
+  }, [show, country]);
+
+  const genres = details?.genres?.length ? details.genres.join(", ") : "Unknown";
+
+  // 🕒 Prefer readable runtimeText (like "1h 2m")
+  let runtime = "N/A";
+  if (details?.runtimeText) {
+    runtime =
+      details.type === "tv_series"
+        ? `${details.runtimeText} per episode`
+        : details.runtimeText;
+  } else if (details?.runtime) {
+    runtime =
+      details.type === "tv_series"
+        ? `${details.runtime} min per episode`
+        : `${details.runtime} min`;
+  }
+
+  console.log("🎬 Modal runtime data:", {
+    runtime: details?.runtime,
+    runtimeText: details?.runtimeText,
+    type: details?.type,
+  });
+
+  return (
+    <AnimatePresence>
+      {details && (
+        <motion.div
+          key="modal"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 40 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="relative bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden"
+          >
+            {/* ❌ Close Button */}
+            <button
+              onClick={onClose}
+              className="absolute top-4 right-4 text-gray-400 hover:text-white transition"
+            >
+              <X size={28} />
+            </button>
+
+            {/* 🖼️ Banner */}
+            <div className="relative">
+              <img
+                src={details?.backdrop || details?.poster || "/placeholder-poster.jpg"}
+                alt={details?.title}
+                className="w-full h-72 object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent" />
+              <div className="absolute bottom-4 left-6">
+                <h2 className="text-3xl font-bold text-white drop-shadow-md">
+                  {details?.title}
+                </h2>
+                <p className="text-gray-300 text-sm">
+                  {details?.year} • {details?.type} • ⭐{" "}
+                  {details?.rating ? details.rating.toFixed(1) : "N/A"}
+                </p>
+              </div>
+            </div>
+
+            {/* 📄 Info Section */}
+            <div className="p-6 space-y-5">
+              {loading ? (
+                <p className="text-gray-400 italic">Loading details...</p>
+              ) : (
+                <>
+                  {/* Overview */}
+                  <p className="text-gray-200 text-base leading-relaxed">
+                    {details?.overview || "No description available."}
+                  </p>
+
+                  {/* Metadata Badges */}
+                  <div className="flex flex-wrap gap-3 text-sm">
+                    <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300">
+                      ⭐ {details?.rating ? details.rating.toFixed(1) : "N/A"}
+                    </span>
+                    <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300">
+                      ⏱ {runtime}
+                    </span>
+                    <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300">
+                      {genres}
+                    </span>
+                    <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300 flex items-center gap-1">
+                      <Globe2 size={14} /> {country.toUpperCase()}
+                    </span>
+                  </div>
+
+                  {/* 🎬 Trailer Button */}
+                  {details?.trailer && (
+                    <motion.a
+                      href={details.trailer}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.97 }}
+                      className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition"
+                    >
+                      <PlayCircle size={18} />
+                      Watch Trailer
+                    </motion.a>
+                  )}
+
+                  {/* 🎥 Streaming Platforms */}
+                  {platforms.length > 0 ? (
+                    <div>
+                      <h3 className="text-lg font-semibold text-white mb-2">
+                        Available to stream on:
+                      </h3>
+                      <motion.div
+                        className="flex flex-wrap gap-4 items-center"
+                        initial="hidden"
+                        animate="visible"
+                        variants={{
+                          hidden: { opacity: 0 },
+                          visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+                        }}
+                      >
+                        {platforms.map((p, i) => {
+                          const logoSrc = platformLogos[p];
+                          return (
+                            <motion.div
+                              key={i}
+                              className="flex items-center justify-center bg-gray-800 rounded-xl p-2 shadow hover:shadow-lg transition cursor-pointer"
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.97 }}
+                              variants={{
+                                hidden: { opacity: 0, y: 5 },
+                                visible: { opacity: 1, y: 0 },
+                              }}
+                            >
+                              {logoSrc ? (
+                                <img
+                                  src={logoSrc}
+                                  alt={p}
+                                  className="h-6 w-auto object-contain"
+                                />
+                              ) : (
+                                <span className="text-gray-200 text-sm px-3">{p}</span>
+                              )}
+                            </motion.div>
+                          );
+                        })}
+                      </motion.div>
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 text-sm">
+                      No streaming platforms found in your region ({country.toUpperCase()}).
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+export default ShowModal;

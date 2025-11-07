@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import ShowCard from "../components/ShowCard";
 import SkeletonCard from "../components/SkeletonCard";
+import ShowModal from "../components/ShowModal";
 import Navbar from "../components/Navbar";
 import { useCountry } from "../context/CountryContext";
 
@@ -12,12 +13,12 @@ function HomePage() {
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState("");
+  const [selectedShow, setSelectedShow] = useState(null);
 
   const API_BASE = import.meta.env.VITE_API_URL;
   const MAX_SHOWS = 102;
   const PAGE_LIMIT = 20;
 
-  /* 🧠 Try to load cached shows on mount */
   useEffect(() => {
     const cacheKey = `shows-${country}`;
     const cached = sessionStorage.getItem(cacheKey);
@@ -30,15 +31,14 @@ function HomePage() {
           setShows(parsed.results);
           setPage(parsed.nextPage || 6);
           setHasMore(parsed.hasMore ?? true);
-          return; // ✅ Stop here (no re-fetch)
+          return;
         }
       } catch {
-        sessionStorage.removeItem(cacheKey); // corrupted cache
+        sessionStorage.removeItem(cacheKey);
       }
     }
   }, [country]);
 
-  /** 🎬 Fetch shows */
   const fetchShows = async (reset = false, customPage = null) => {
     if (loading || !countryDetected) return;
     setLoading(true);
@@ -62,7 +62,6 @@ function HomePage() {
         const limited = unique.slice(0, MAX_SHOWS);
         setHasMore(limited.length < MAX_SHOWS && data.results.length > 0);
 
-        // 💾 Save to session cache
         sessionStorage.setItem(
           `shows-${country}`,
           JSON.stringify({
@@ -85,58 +84,77 @@ function HomePage() {
     }
   };
 
-  /** 🚀 Load initial 5 pages in parallel */
   useEffect(() => {
-    if (!countryDetected || !country) return;
+  if (!countryDetected || !country) return;
 
-    const cacheKey = `shows-${country}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) return; // ✅ Skip if already cached
+  const cacheKey = `shows-${country}`;
+  const cached = sessionStorage.getItem(cacheKey);
+  if (cached) return;
 
-    const loadInitial = async () => {
-      setLoading(true);
-      setError("");
-      setShows([]);
-      setPage(1);
-      setHasMore(true);
+  const loadInitial = async () => {
+    setLoading(true);
+    setError("");
+    setShows([]);
+    setPage(1);
+    setHasMore(true);
 
-      try {
-        const pages = [1, 2, 3, 4, 5];
-        const fetches = pages.map((p) =>
-          fetch(`${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${p}`).then((r) => r.json())
-        );
+    try {
+      const pages = [1, 2, 3, 4, 5];
 
-        const results = await Promise.all(fetches);
-        const allShows = results.flatMap((r) => r.results || []);
-        const unique = Array.from(new Map(allShows.map((s) => [s.id, s])).values());
-        const limited = unique.slice(0, MAX_SHOWS);
+      const results = await Promise.all(
+        pages.map(async (p) => {
+          const res = await fetch(
+            `${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${p}`
+          );
+          const data = await res.json();
+          return data.results || [];
+        })
+      );
 
-        setShows(limited);
-        setPage(6);
-        setHasMore(limited.length < MAX_SHOWS);
+      const combined = results.flat();
 
-        // 💾 Save to session cache
-        sessionStorage.setItem(
-          cacheKey,
-          JSON.stringify({
-            country,
-            results: limited,
-            nextPage: 6,
-            hasMore: limited.length < MAX_SHOWS,
-          })
-        );
-      } catch (err) {
-        console.error("❌ Initial load failed:", err);
-        setError("Failed to load shows");
-      } finally {
-        setLoading(false);
-      }
-    };
+      const unique = Array.from(
+        combined.reduce((map, show) => {
+          const existing = map.get(show.id);
 
-    loadInitial();
-  }, [countryDetected, country]);
+          const completenessScore = (obj) =>
+            Object.values(obj || {}).filter((v) => v !== null && v !== undefined).length;
 
-  /** 🧭 Infinite scroll */
+          if (!existing || completenessScore(show) > completenessScore(existing)) {
+            map.set(show.id, show);
+          }
+
+          return map;
+        }, new Map()).values()
+      );
+
+      const limited = unique.slice(0, MAX_SHOWS);
+
+      setShows(limited);
+      setPage(6);
+      setHasMore(limited.length < MAX_SHOWS);
+
+      sessionStorage.setItem(
+        cacheKey,
+        JSON.stringify({
+          country,
+          results: limited,
+          nextPage: 6,
+          hasMore: limited.length < MAX_SHOWS,
+        })
+      );
+    } catch (err) {
+      console.error("❌ Initial load failed:", err);
+      setError("Failed to load shows");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  loadInitial();
+}, [countryDetected, country]);
+
+
   useEffect(() => {
     const handleScroll = () => {
       if (loading || !hasMore) return;
@@ -149,18 +167,23 @@ function HomePage() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, [loading, hasMore, country]);
 
-  /** 🎞️ Show platforms */
   const handleShowClick = async (show) => {
-    try {
-      const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
-      const data = await res.json();
-      alert(`${show.title} is available on: ${data.platforms.join(", ")}`);
-    } catch (err) {
-      console.error("Error fetching show sources:", err);
-    }
-  };
+  try {
+    const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
+    const data = await res.json();
 
-  /** 🕐 Waiting for detection */
+    const showWithPlatforms = {
+      ...show,
+      platforms: data.platforms || [],
+    };
+
+    setSelectedShow(showWithPlatforms);
+  } catch (err) {
+    console.error("❌ Error fetching show details:", err);
+  }
+};
+
+
   if (!countryDetected) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -180,14 +203,12 @@ function HomePage() {
       <main className="p-8">
         {error && <p className="text-center text-red-400">{error}</p>}
 
-        {/* Grid of shows */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {shows.map((show) => (
             <ShowCard key={show.id} show={show} onClick={() => handleShowClick(show)} />
           ))}
         </div>
 
-        {/* Skeleton loader */}
         {loading && shows.length === 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
             {Array.from({ length: 6 }).map((_, i) => (
@@ -196,11 +217,18 @@ function HomePage() {
           </div>
         )}
 
-        {/* Empty state */}
         {!loading && shows.length === 0 && !error && (
           <p className="text-center mt-10 text-gray-400">
             No shows found for your region.
           </p>
+        )}
+
+        {selectedShow && (
+          <ShowModal
+            show={selectedShow}
+            country={country}
+            onClose={() => setSelectedShow(null)}
+          />
         )}
       </main>
     </div>

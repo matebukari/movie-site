@@ -6,31 +6,32 @@ dotenv.config();
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const TMDB_BASE_URL = "https://api.themoviedb.org/3";
 
-/**
- * Fetch detailed info from TMDB (poster, backdrop, trailer, etc.)
- * @param {Object} options
- * @param {number|string} options.tmdb_id - TMDB ID (if known)
- * @param {string} options.title - Title of the movie/show
- * @param {string} options.type - "movie" or "tv_series"
- */
 export const fetchTMDBDetails = async ({ tmdb_id, title, type = "movie" }) => {
   try {
     const tmdbType = type === "tv_series" ? "tv" : "movie";
     let data = null;
 
-    // 1️⃣ Try fetching directly by TMDB ID
+    // 1️⃣ Try by TMDB ID first
     if (tmdb_id) {
-      const res = await axios.get(`${TMDB_BASE_URL}/${tmdbType}/${tmdb_id}`, {
-        params: {
-          api_key: TMDB_API_KEY,
-          append_to_response: "videos",
-          language: "en-US",
-        },
-      });
-      data = res.data;
+      try {
+        const res = await axios.get(`${TMDB_BASE_URL}/${tmdbType}/${tmdb_id}`, {
+          params: {
+            api_key: TMDB_API_KEY,
+            append_to_response: "videos",
+            language: "en-US",
+          },
+        });
+        data = res.data;
+      } catch (err) {
+        if (err.response?.status === 404) {
+          console.warn(`⚠️ TMDB ID ${tmdb_id} not found, falling back to title search for "${title}"`);
+        } else {
+          throw err;
+        }
+      }
     }
 
-    // 2️⃣ If no TMDB ID, search by title
+    // 2️⃣ If ID fetch failed, search by title
     if (!data && title) {
       const searchRes = await axios.get(`${TMDB_BASE_URL}/search/${tmdbType}`, {
         params: {
@@ -51,12 +52,14 @@ export const fetchTMDBDetails = async ({ tmdb_id, title, type = "movie" }) => {
           },
         });
         data = fullRes.data;
+      } else {
+        console.warn(`⚠️ No TMDB match found for title "${title}"`);
       }
     }
 
     if (!data) return null;
 
-    // 3️⃣ Extract trailer (YouTube)
+    // 🎬 Extract trailer (YouTube)
     const youtubeTrailer = data.videos?.results?.find(
       (v) => v.type === "Trailer" && v.site === "YouTube"
     );
@@ -65,19 +68,23 @@ export const fetchTMDBDetails = async ({ tmdb_id, title, type = "movie" }) => {
       ? `https://www.youtube.com/watch?v=${youtubeTrailer.key}`
       : null;
 
-    // 4️⃣ Return normalized TMDB data
+    // ✅ Return normalized data (including runtime for both TV and movies)
     return {
-      poster: data.poster_path
-        ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
-        : null,
-      backdrop: data.backdrop_path
-        ? `https://image.tmdb.org/t/p/original${data.backdrop_path}`
-        : null,
+      id: data.id,
+      title: data.title || data.name,
+      poster_path: data.poster_path,
+      backdrop_path: data.backdrop_path,
       overview: data.overview,
       genres: data.genres || [],
-      rating: data.vote_average || null,
+      vote_average: data.vote_average || null,
       release_date: data.release_date || data.first_air_date || null,
-      trailer: trailerUrl, // ✅ this is key!
+      trailer: trailerUrl,
+      runtime: data.runtime ?? null,
+      episode_run_time: Array.isArray(data.episode_run_time)
+        ? data.episode_run_time
+        : data.episode_run_time
+        ? [data.episode_run_time]
+        : [],
     };
   } catch (err) {
     console.warn(`⚠️ TMDB fetch failed for "${title || tmdb_id}": ${err.message}`);
