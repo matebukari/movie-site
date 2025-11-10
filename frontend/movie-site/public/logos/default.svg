@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="48" viewBox="0 0 160 48" role="img" aria-label="Available">
+  <title>Available</title>
+  <rect x="0" y="0" width="160" height="48" rx="10" fill="#374151"/>
+  <g>
+    <polygon points="22,16 22,32 34,24" fill="#FFFFFF20" opacity="0.9"/>
+    <text x="80" y="28" text-anchor="middle" font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+          font-size="18" font-weight="600" fill="#E5E7EB">Available</text>
+  </g>
+</svg>

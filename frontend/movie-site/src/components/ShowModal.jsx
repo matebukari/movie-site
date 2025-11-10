@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { X, Globe2, PlayCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getPlatformLogo } from "../utils/getPlatformLogo";
 
 function ShowModal({ show, country, onClose }) {
   const [details, setDetails] = useState(null);
@@ -9,27 +10,7 @@ function ShowModal({ show, country, onClose }) {
 
   const API_BASE = import.meta.env.VITE_API_URL;
 
-  console.log("🎞️ ShowModal received show:", show);
-
-  // 🧩 Platform logo mapping (add more as needed)
-  const platformLogos = {
-    "Netflix": "/logos/netflix.svg",
-    "Hulu": "/logos/hulu.svg",
-    "Disney+": "/logos/disneyplus.svg",
-    "Amazon Prime Video": "/logos/primevideo.svg",
-    "Amazon": "/logos/primevideo.svg",
-    "Apple TV+": "/logos/appletv.svg",
-    "AppleTV": "/logos/appletv.svg",
-    "HBO Max": "/logos/hbomax.svg",
-    "Max": "/logos/hbomax.svg",
-    "Peacock": "/logos/peacock.svg",
-    "Paramount+": "/logos/paramountplus.svg",
-    "YouTube": "/logos/youtube.svg",
-    "Rakuten TV": "/logos/rakuten.svg",
-    "Sky Store": "/logos/skystore.svg",
-    "Crave": "/logos/crave.svg",
-    "Now TV": "/logos/nowtv.svg",
-  };
+  
 
   // ⌨️ Close modal on ESC
   useEffect(() => {
@@ -38,7 +19,7 @@ function ShowModal({ show, country, onClose }) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  // 🎬 Fetch only streaming sources from backend
+  // 🎬 Fetch platform availability
   useEffect(() => {
     const fetchPlatforms = async () => {
       try {
@@ -46,8 +27,15 @@ function ShowModal({ show, country, onClose }) {
         const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
         const data = await res.json();
 
+        console.log(
+          "🎥 Platforms fetched for:",
+          show?.title || show?.name,
+          "→",
+          data.platforms || []
+        );
+
         setPlatforms(data.platforms || []);
-        setDetails(show); // ✅ Use already-merged show data
+        setDetails(show);
       } catch (err) {
         console.error("❌ Failed to fetch show platforms:", err);
         setDetails(show);
@@ -61,28 +49,21 @@ function ShowModal({ show, country, onClose }) {
 
   const genres = details?.genres?.length ? details.genres.join(", ") : "Unknown";
 
-  // 🕒 Prefer readable runtimeText (like "1h 2m")
+  // 🕒 Runtime display
   let runtime = "N/A";
   if (details?.runtimeText) {
-    runtime =
-      details.type === "tv_series"
-        ? `${details.runtimeText} per episode`
-        : details.runtimeText;
+    runtime = details.type === "tv_series"
+      ? `${details.runtimeText} per episode`
+      : details.runtimeText;
   } else if (details?.runtime) {
-    runtime =
-      details.type === "tv_series"
-        ? `${details.runtime} min per episode`
-        : `${details.runtime} min`;
+    runtime = details.type === "tv_series"
+      ? `${details.runtime} min per episode`
+      : `${details.runtime} min`;
   }
 
-  console.log("🎬 Modal runtime data:", {
-    runtime: details?.runtime,
-    runtimeText: details?.runtimeText,
-    type: details?.type,
-  });
 
   return (
-    <AnimatePresence>
+    <AnimatePresence mode="wait">
       {details && (
         <motion.div
           key="modal"
@@ -170,7 +151,7 @@ function ShowModal({ show, country, onClose }) {
                   {/* 🎥 Streaming Platforms */}
                   {platforms.length > 0 ? (
                     <div>
-                      <h3 className="text-lg font-semibold text-white mb-2">
+                      <h3 className="text-lg font-semibold text-white mb-3">
                         Available to stream on:
                       </h3>
                       <motion.div
@@ -182,31 +163,25 @@ function ShowModal({ show, country, onClose }) {
                           visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
                         }}
                       >
-                        {platforms.map((p, i) => {
-                          const logoSrc = platformLogos[p];
-                          return (
-                            <motion.div
-                              key={i}
-                              className="flex items-center justify-center bg-gray-800 rounded-xl p-2 shadow hover:shadow-lg transition cursor-pointer"
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.97 }}
-                              variants={{
-                                hidden: { opacity: 0, y: 5 },
-                                visible: { opacity: 1, y: 0 },
-                              }}
-                            >
-                              {logoSrc ? (
-                                <img
-                                  src={logoSrc}
-                                  alt={p}
-                                  className="h-6 w-auto object-contain"
-                                />
-                              ) : (
-                                <span className="text-gray-200 text-sm px-3">{p}</span>
-                              )}
-                            </motion.div>
-                          );
-                        })}
+                        {platforms.map((p, i) => (
+                          <motion.div
+                            key={i}
+                            className="bg-gray-800 rounded-xl p-2 shadow hover:shadow-lg transition"
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.97 }}
+                            variants={{
+                              hidden: { opacity: 0, y: 5 },
+                              visible: { opacity: 1, y: 0 },
+                            }}
+                          >
+                            <img
+                              src={getPlatformLogo(p)}
+                              alt={p}
+                              className="h-6 w-auto object-contain"
+                              onError={(e) => (e.currentTarget.src = "/logos/default.svg")}
+                            />
+                          </motion.div>
+                        ))}
                       </motion.div>
                     </div>
                   ) : (
