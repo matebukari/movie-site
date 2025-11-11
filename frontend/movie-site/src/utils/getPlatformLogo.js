@@ -1,6 +1,5 @@
 // src/utils/getPlatformLogo.js
 
-// 🧩 Map multiple aliases → single normalized logo name
 const LOGO_MAP = {
   netflix: "netflix",
   "disney+": "disneyplus",
@@ -9,7 +8,15 @@ const LOGO_MAP = {
   "amazon prime": "primevideo",
   amazon: "primevideo",
   "apple tv": "appletv",
+  "apple tv app": "appletv",
   "apple tv+": "appletvplus",
+  "apple tv plus": "appletvplus",
+  "appletv+": "appletvplus",
+  appletvplus: "appletvplus",
+  appletv: "appletv",
+  "apple tvplus": "appletvplus",
+  "apple-tv": "appletv",
+  "apple-tv+": "appletvplus",
   hulu: "hulu",
   max: "max",
   "hbo max": "max",
@@ -23,25 +30,48 @@ const LOGO_MAP = {
   "now tv": "nowtv",
   crave: "crave",
   "bbc iplayer": "bbciplayer",
+  "itv player": "itvplayer",
+  itvx: "itvplayer",
   chili: "chili",
   starz: "starz",
 };
 
 /**
- * ✅ Returns the URL to a platform logo from /public/logos/
- * Falls back to /logos/default.svg if missing
+ * Returns the URL to a platform logo from /public/logos/
+ * Returns null if no known logo exists.
  */
 export function getPlatformLogo(name) {
-  if (!name) return "/logos/default.svg";
-  const key =
-    LOGO_MAP[name.toLowerCase()] ||
-    name.toLowerCase().replace(/\s+/g, "");
-  return `/logos/${key}.svg`;
+  if (!name) return null;
+
+  let normalized = name.toLowerCase().trim();
+
+  // Replace symbols and normalize common forms
+  normalized = normalized
+    .replace(/[+]/g, " plus")
+    .replace(/[\-_.]/g, " ")
+    .replace(/\s+/g, " ");
+
+  // Handle known Apple TV variants explicitly
+  if (
+    normalized.includes("apple tv") ||
+    normalized.includes("appletv") ||
+    normalized.includes("apple tv plus") ||
+    normalized.includes("appletv plus") ||
+    normalized.includes("apple tv app")
+  ) {
+    if (normalized.includes("plus")) return "/logos/appletvplus.svg";
+    return "/logos/appletv.svg";
+  }
+
+  const key = LOGO_MAP[normalized] || LOGO_MAP[normalized.replace(/\s+/g, "")];
+  if (key) return `/logos/${key}.svg`;
+
+  console.warn(`Unknown streaming platform: "${name}"`);
+  return null;
 }
 
 /**
- * 🧹 Normalizes platform names and removes duplicates
- * Keeps consistent casing for display + logo match
+ * Normalizes platform names and removes duplicates.
  */
 export function normalizePlatforms(list = []) {
   const seen = new Set();
@@ -54,7 +84,13 @@ export function normalizePlatforms(list = []) {
         case "prime video":
           return "Prime Video";
         case "apple tv":
+        case "appletv":
+          return "Apple TV";
         case "apple tv+":
+        case "apple tv plus":
+        case "appletv+":
+        case "appletvplus":
+        case "apple tv app":
           return "Apple TV+";
         case "disney+":
         case "disney plus":
@@ -70,6 +106,9 @@ export function normalizePlatforms(list = []) {
           return "Now TV";
         case "bbc iplayer":
           return "BBC iPlayer";
+        case "itv player":
+        case "itvx":
+          return "ITV Player";
         case "rakuten tv":
           return "Rakuten TV";
         case "sky store":
@@ -87,7 +126,7 @@ export function normalizePlatforms(list = []) {
     });
 }
 
-/** 🪄 Capitalize words for clean display */
+/** Capitalize each word for display */
 function capitalizeWords(str = "") {
   return str
     .split(" ")
