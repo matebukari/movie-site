@@ -1,29 +1,36 @@
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 import SearchBar from "./SearchBar";
-import { useCountry } from "../context/CountryContext"; // ✅ Import global context
-import { Link, useLocation } from "react-router-dom"; // ✅ Better navigation without reloads
+import { useCountry } from "../context/CountryContext";
 
-function Navbar({ searchQuery, setSearchQuery, onSearch }) {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { country, setCountry } = useCountry(); // ✅ Shared across all pages
+export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { country, setCountry } = useCountry();
   const location = useLocation();
 
   const navItems = [
-    { name: "Home", href: "/" },
-    { name: "New", href: "/new" },
-    { name: "Popular", href: "/popular" },
+    { name: "Home", path: "/" },
+    { name: "New", path: "/new" },
+    { name: "Popular", path: "/popular" },
   ];
 
+  const toggleMenu = () => setMenuOpen((prev) => !prev);
+  const closeMenu = () => setMenuOpen(false);
+
   return (
-    <nav className="bg-gray-900 border-b border-gray-800 px-6 py-4 sticky top-0 z-50 shadow-md">
-      <div className="flex justify-between items-center max-w-7xl mx-auto">
-        {/* 🔹 Brand Logo */}
-        <Link to="/" className="text-2xl font-bold text-blue-500">
-          🎬 StreamScope
+    <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50 shadow-md">
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
+        {/* Brand */}
+        <Link
+          to="/"
+          onClick={closeMenu}
+          className="text-2xl font-bold text-blue-500 hover:text-blue-400 transition"
+        >
+          StreamScope
         </Link>
 
-        {/* 🔍 Center Search (desktop) */}
+        {/* Search (Desktop Only) */}
         <div className="hidden lg:flex flex-1 justify-center px-6">
           <SearchBar
             searchQuery={searchQuery}
@@ -34,46 +41,55 @@ function Navbar({ searchQuery, setSearchQuery, onSearch }) {
           />
         </div>
 
-        {/* 🧭 Desktop Nav Links */}
+        {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              className={`text-gray-300 hover:text-blue-400 transition ${
-                location.pathname === item.href ? "text-blue-400 font-semibold" : ""
-              }`}
-            >
-              {item.name}
-            </Link>
-          ))}
+          {navItems.map(({ name, path }) => {
+            const active = location.pathname === path;
+            return (
+              <Link
+                key={name}
+                to={path}
+                className={`text-gray-300 hover:text-blue-400 transition ${
+                  active ? "text-blue-400 font-semibold" : ""
+                }`}
+              >
+                {name}
+              </Link>
+            );
+          })}
         </div>
 
-        {/* ☰ Mobile Menu Button */}
+        {/* Mobile Menu Toggle */}
         <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="md:hidden text-gray-300 hover:text-blue-400"
+          onClick={toggleMenu}
+          aria-label="Toggle menu"
+          className="md:hidden text-gray-300 hover:text-blue-400 transition"
         >
-          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+          {menuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
 
-      {/* 📱 Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden mt-4 space-y-4 text-center border-t border-gray-800 pt-4">
-          {navItems.map((item) => (
-            <Link
-              key={item.name}
-              to={item.href}
-              onClick={() => setIsMenuOpen(false)}
-              className={`block text-gray-300 hover:text-blue-400 transition ${
-                location.pathname === item.href ? "text-blue-400 font-semibold" : ""
-              }`}
-            >
-              {item.name}
-            </Link>
-          ))}
-          <div className="flex justify-center">
+      {/* Mobile Menu */}
+      {menuOpen && (
+        <div className="md:hidden border-t border-gray-800 px-6 py-4 bg-gray-900">
+          <div className="flex flex-col items-center gap-4">
+            {navItems.map(({ name, path }) => {
+              const active = location.pathname === path;
+              return (
+                <Link
+                  key={name}
+                  to={path}
+                  onClick={closeMenu}
+                  className={`block text-gray-300 hover:text-blue-400 transition ${
+                    active ? "text-blue-400 font-semibold" : ""
+                  }`}
+                >
+                  {name}
+                </Link>
+              );
+            })}
+
+            {/* Search in Mobile Menu */}
             <SearchBar
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
@@ -87,5 +103,3 @@ function Navbar({ searchQuery, setSearchQuery, onSearch }) {
     </nav>
   );
 }
-
-export default Navbar;
