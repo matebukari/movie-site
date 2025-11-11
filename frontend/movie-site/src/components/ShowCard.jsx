@@ -2,35 +2,28 @@ import { useState, useEffect, useRef } from "react";
 import { LazyLoadImage } from "react-lazy-load-image-component";
 import "react-lazy-load-image-component/src/effects/blur.css";
 
-function ShowCard({ show, onClick }) {
-  const [isHovered, setIsHovered] = useState(false);
+export default function ShowCard({ show, onClick }) {
+  const [hovered, setHovered] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const videoRef = useRef(null);
   const iframeRef = useRef(null);
   const hoverTimeout = useRef(null);
 
-  // 📱 Detect mobile view
+  // Responsive detection
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // 🎥 Identify YouTube trailers
+  // Determine YouTube trailer
   const isYouTubeTrailer =
     show.trailer?.includes("youtube.com") || show.trailer?.includes("youtu.be");
 
   const getYouTubeEmbedUrl = (url) => {
     if (!url) return null;
-    let videoId = null;
-
-    if (url.includes("watch?v=")) {
-      videoId = url.split("v=")[1]?.split("&")[0];
-    } else if (url.includes("youtu.be/")) {
-      videoId = url.split("youtu.be/")[1]?.split("?")[0];
-    }
-
-    // 🧩 Hide recommended videos and clean branding
+    const videoId =
+      url.match(/v=([^&]+)/)?.[1] || url.match(/youtu\.be\/([^?]+)/)?.[1];
     return videoId
       ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&controls=0&loop=1&playlist=${videoId}&modestbranding=1&rel=0&showinfo=0`
       : null;
@@ -38,37 +31,34 @@ function ShowCard({ show, onClick }) {
 
   const youtubeEmbedUrl = getYouTubeEmbedUrl(show.trailer);
 
-  // 🧭 Handle hover preview
+  // Hover handlers
   const handleMouseEnter = () => {
-    if (!isMobile) {
-      clearTimeout(hoverTimeout.current);
-      hoverTimeout.current = setTimeout(() => setIsHovered(true), 500);
-    }
+    if (isMobile) return;
+    clearTimeout(hoverTimeout.current);
+    hoverTimeout.current = setTimeout(() => setHovered(true), 400);
   };
 
   const handleMouseLeave = () => {
     clearTimeout(hoverTimeout.current);
-    if (!isMobile) {
-      setIsHovered(false);
+    if (isMobile) return;
 
-      // 🎞️ Reset video trailer (MP4)
-      if (videoRef.current) {
-        videoRef.current.pause();
-        videoRef.current.currentTime = 0;
-      }
+    setHovered(false);
 
-      // 📺 Reset YouTube trailer (reload iframe)
-      if (iframeRef.current) {
-        const src = iframeRef.current.src;
-        iframeRef.current.src = "";
-        iframeRef.current.src = src;
-      }
+    // Reset trailer elements
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+    if (iframeRef.current) {
+      const src = iframeRef.current.src;
+      iframeRef.current.src = "";
+      iframeRef.current.src = src;
     }
   };
 
-  const handleCardClick = (e) => {
+  const handleClick = (e) => {
     e.stopPropagation();
-    if (onClick) onClick(show);
+    onClick?.(show);
   };
 
   const imageSrc = isMobile
@@ -77,15 +67,17 @@ function ShowCard({ show, onClick }) {
 
   return (
     <div
-      onClick={handleCardClick}
+      onClick={handleClick}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
-      className="relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden shadow-md transition-all duration-500 ease-in-out cursor-pointer hover:shadow-lg opacity-0 animate-fadeIn"
+      className="relative bg-gray-900 border border-gray-800 rounded-xl overflow-hidden 
+                 shadow-md transition-all duration-500 ease-in-out cursor-pointer 
+                 hover:shadow-blue-900/20 hover:scale-[1.02] opacity-0 animate-fadeIn"
     >
-      {/* 🖼️ Static Poster / Backdrop */}
+      {/* Image layer */}
       <div
         className={`transition-opacity duration-500 ${
-          isHovered && show.trailer ? "opacity-0" : "opacity-100"
+          hovered && show.trailer ? "opacity-0" : "opacity-100"
         }`}
       >
         <LazyLoadImage
@@ -96,12 +88,12 @@ function ShowCard({ show, onClick }) {
         />
       </div>
 
-      {/* 🎬 Trailer Preview on Hover (non-clickable layer) */}
+      {/* Trailer preview (YouTube or video) */}
       {show.trailer && (
         <div
           className={`absolute inset-0 transition-opacity duration-500 ${
-            isHovered ? "opacity-100 pointer-events-none" : "opacity-0 pointer-events-none"
-          }`}
+            hovered ? "opacity-100" : "opacity-0"
+          } pointer-events-none`}
         >
           {isYouTubeTrailer ? (
             <iframe
@@ -110,12 +102,12 @@ function ShowCard({ show, onClick }) {
               title={`${show.title} trailer`}
               className="w-full h-full object-cover"
               allow="autoplay; encrypted-media"
-            ></iframe>
+            />
           ) : (
             <video
               ref={videoRef}
               src={show.trailer}
-              autoPlay={isHovered}
+              autoPlay={hovered}
               loop
               muted
               playsInline
@@ -125,18 +117,19 @@ function ShowCard({ show, onClick }) {
         </div>
       )}
 
-      {/* 🧾 Info overlay */}
+      {/* Info overlay */}
       <div
-        className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4 
-          transition-opacity duration-500 ${isHovered ? "opacity-0" : "opacity-100"}`}
+        className={`absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent 
+                    p-4 transition-opacity duration-500 ${
+                      hovered ? "opacity-0" : "opacity-100"
+                    }`}
       >
         <h2 className="text-lg font-semibold text-white truncate">{show.title}</h2>
         <p className="text-sm text-gray-300">
-          {show.year ? `(${show.year})` : ""} • {show.type || ""}
+          {show.year && `(${show.year})`} {show.year && show.type && " • "}{" "}
+          {show.type || ""}
         </p>
       </div>
     </div>
   );
 }
-
-export default ShowCard;
