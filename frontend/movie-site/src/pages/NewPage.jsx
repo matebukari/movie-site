@@ -1,12 +1,20 @@
-import { useState, useEffect } from "react";
-import ShowCard from "../components/ShowCard";
-import SkeletonCard from "../components/SkeletonCard";
-import ShowModal from "../components/ShowModal";
+import { useState, useEffect, useCallback } from "react";
 import Navbar from "../components/Navbar";
+import ShowModal from "../components/ShowModal";
+import ShowsGrid from "../components/ShowsGrid";
 import { useCountry } from "../context/CountryContext";
 
-function NewPage() {
+import useCachedShows from "../hooks/useCachedShows";
+import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import { fetchShowsGeneric } from "../hooks/useFetchShows";
+
+const API_BASE = import.meta.env.VITE_API_URL;
+const PAGE_LIMIT = 20;
+
+export default function NewPage() {
   const { country, countryDetected } = useCountry();
+  const { getCache, setCache } = useCachedShows("new", country);
+
   const [shows, setShows] = useState([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -14,107 +22,49 @@ function NewPage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  const API_BASE = import.meta.env.VITE_API_URL;
-  const MAX_SHOWS = 102;
-  const PAGE_LIMIT = 20;
-
+  // Load from Cache
   useEffect(() => {
-    const cacheKey = `new-${country}`;
-    const cached = sessionStorage.getItem(cacheKey);
-
-    if (cached) {
-      try {
-        const parsed = JSON.parse(cached);
-        if (
-          parsed &&
-          Array.isArray(parsed.results) &&
-          parsed.results.length > 0 &&
-          parsed.country === country
-        ) {
-          console.log(`⚡ Loaded ${parsed.results.length} new releases from cache for ${country}`);
-          setShows(parsed.results);
-          setPage(parsed.nextPage || 6);
-          setHasMore(parsed.hasMore ?? true);
-          return;
-        }
-      } catch {
-        console.warn("🧹 Invalid cache, clearing...");
-        sessionStorage.removeItem(cacheKey);
-      }
+    const cache = getCache();
+    if (cache) {
+      setShows(cache.results);
+      setPage(cache.nextPage ?? 6);
+      setHasMore(cache.hasMore ?? true);
     }
   }, [country]);
 
-  const fetchNewTitles = async (reset = false, customPage = null) => {
-    if (loading || !countryDetected) return;
-    setLoading(true);
-    setError("");
+  // Fetch new releases
+  const fetchNewTitles = useCallback(
+    async (reset = false, customPage = null) => {
+      if (loading || !countryDetected) return;
 
-    try {
+      setLoading(true);
+      setError("");
+
       const currentPage = customPage || (reset ? 1 : page);
       const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
-      const res = await fetch(endpoint);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed to fetch new releases");
+      try {
+        const { results, hasMore: more } = await fetchShowsGeneric(endpoint, reset ? [] : shows);
+        setShows(results);
+        setHasMore(more);
+        setCache(results, currentPage + 1, more);
+        setPage((p) => p + 1);
+      } catch (err) {
+        console.error("Error fetching new releases:", err);
+        setError("Error fetching new releases");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [country, countryDetected, page, shows, loading]
+  );
 
-      console.log(`🎬 Received ${data.results?.length || 0} new releases for ${country} (page ${currentPage})`);
-
-      setShows((prev) => {
-        const newShows = reset ? data.results : [...prev, ...data.results];
-
-        const unique = Array.from(
-          newShows.reduce((map, show) => {
-            const existing = map.get(show.id);
-            const completenessScore = (obj) =>
-              Object.values(obj || {}).filter((v) => v !== null && v !== undefined).length;
-
-            if (!existing || completenessScore(show) > completenessScore(existing)) {
-              map.set(show.id, show);
-            }
-
-            return map;
-          }, new Map()).values()
-        );
-
-        const limited = unique.slice(0, MAX_SHOWS);
-        const hasMoreResults = limited.length < MAX_SHOWS && data.results.length > 0;
-
-        sessionStorage.setItem(
-          `new-${country}`,
-          JSON.stringify({
-            country,
-            results: limited,
-            nextPage: currentPage + 1,
-            hasMore: hasMoreResults,
-          })
-        );
-
-        setHasMore(hasMoreResults);
-        return limited;
-      });
-
-      setPage((prev) => prev + 1);
-    } catch (err) {
-      console.error("❌ Error fetching new releases:", err);
-      setError("Error fetching new releases");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Initial Preload (first 5 pages)
   useEffect(() => {
-    console.log("🚀 New releases preload triggered:", { countryDetected, country });
     if (!countryDetected || !country) return;
-
-    const cacheKey = `new-${country}`;
-    const cached = sessionStorage.getItem(cacheKey);
-    if (cached) {
-      const parsed = JSON.parse(cached);
-      if (parsed?.results?.length > 0) return;
-    }
+    if (getCache()) return;
 
     const loadInitial = async () => {
-      console.log(`📡 Fetching new releases for ${country}`);
       setLoading(true);
       setError("");
       setShows([]);
@@ -123,50 +73,21 @@ function NewPage() {
 
       try {
         const pages = [1, 2, 3, 4, 5];
-
-        const results = await Promise.all(
+        const allResults = await Promise.all(
           pages.map(async (p) => {
-            const res = await fetch(`${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${p}`);
-            const data = await res.json();
-            return data.results || [];
+            const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${p}`;
+            const { results } = await fetchShowsGeneric(endpoint);
+            return results;
           })
         );
 
-        const combined = results.flat();
-
-        const unique = Array.from(
-          combined.reduce((map, show) => {
-            const existing = map.get(show.id);
-            const completenessScore = (obj) =>
-              Object.values(obj || {}).filter((v) => v !== null && v !== undefined).length;
-
-            if (!existing || completenessScore(show) > completenessScore(existing)) {
-              map.set(show.id, show);
-            }
-
-            return map;
-          }, new Map()).values()
-        );
-
-        const limited = unique.slice(0, MAX_SHOWS);
-
-        console.log(`✅ Preloaded ${limited.length} new releases for ${country}`);
-
-        setShows(limited);
+        const combined = allResults.flat();
+        setShows(combined);
         setPage(6);
-        setHasMore(limited.length < MAX_SHOWS);
-
-        sessionStorage.setItem(
-          cacheKey,
-          JSON.stringify({
-            country,
-            results: limited,
-            nextPage: 6,
-            hasMore: limited.length < MAX_SHOWS,
-          })
-        );
+        setHasMore(combined.length > 0);
+        setCache(combined, 6, combined.length > 0);
       } catch (err) {
-        console.error("❌ Failed to preload new releases:", err);
+        console.error("Failed to preload new releases:", err);
         setError("Failed to load new releases");
       } finally {
         setLoading(false);
@@ -176,18 +97,12 @@ function NewPage() {
     loadInitial();
   }, [countryDetected, country]);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      if (loading || !hasMore) return;
-      if (window.innerHeight + window.scrollY >= document.body.offsetHeight - 400) {
-        fetchNewTitles();
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
+  // Infinite Scroll
+  useInfiniteScroll(() => {
+    if (!loading && hasMore) fetchNewTitles();
   }, [loading, hasMore, country]);
 
+  // Render
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -202,28 +117,16 @@ function NewPage() {
 
       <main className="p-8">
         <h1 className="text-3xl font-semibold mb-6 text-center text-blue-400">
-          🎬 New Releases in {country?.toUpperCase() || "US"}
+          New Releases in {country?.toUpperCase() || "US"}
         </h1>
 
-        {error && <p className="text-center text-red-400">{error}</p>}
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {shows.map((show) => (
-            <ShowCard key={show.id} show={show} onClick={() => setSelectedShow(show)} />
-          ))}
-        </div>
-
-        {loading && shows.length === 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <SkeletonCard key={i} />
-            ))}
-          </div>
-        )}
-
-        {!loading && shows.length === 0 && !error && (
-          <p className="text-center mt-10 text-gray-400">No new releases found.</p>
-        )}
+        <ShowsGrid
+          shows={shows}
+          loading={loading}
+          error={error}
+          emptyMessage="No new releases found."
+          onShowClick={setSelectedShow}
+        />
 
         {selectedShow && (
           <ShowModal
@@ -236,5 +139,3 @@ function NewPage() {
     </div>
   );
 }
-
-export default NewPage;

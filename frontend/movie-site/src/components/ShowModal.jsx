@@ -49,18 +49,30 @@ function ShowModal({ show, country, onClose }) {
 
   const genres = details?.genres?.length ? details.genres.join(", ") : "Unknown";
 
-  // 🕒 Runtime display
-  let runtime = "N/A";
-  if (details?.runtimeText) {
-    runtime = details.type === "tv_series"
-      ? `${details.runtimeText} per episode`
-      : details.runtimeText;
-  } else if (details?.runtime) {
-    runtime = details.type === "tv_series"
-      ? `${details.runtime} min per episode`
-      : `${details.runtime} min`;
-  }
+  // 🕒 Runtime display (always clean & readable)
+    // 🕒 Runtime display (clean handling)
+  // 🕒 Runtime display (filters "N/A" and other junk)
+  let runtime = null;
 
+  const invalidValues = ["n/a", "na", "none", "-", ""];
+
+  if (
+    details?.runtimeText &&
+    !invalidValues.includes(details.runtimeText.trim().toLowerCase())
+  ) {
+    runtime =
+      details.type?.toLowerCase().includes("tv")
+        ? `${details.runtimeText} per episode`
+        : details.runtimeText;
+  } else if (
+    typeof details?.runtime === "number" &&
+    details.runtime > 0
+  ) {
+    runtime =
+      details.type?.toLowerCase().includes("tv")
+        ? `${details.runtime} min per episode`
+        : `${details.runtime} min`;
+  }
 
   return (
     <AnimatePresence mode="wait">
@@ -122,9 +134,11 @@ function ShowModal({ show, country, onClose }) {
                     <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300">
                       ⭐ {details?.rating ? details.rating.toFixed(1) : "N/A"}
                     </span>
-                    <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300">
-                      ⏱ {runtime}
-                    </span>
+                    {runtime && (
+                      <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300">
+                        ⏱ {runtime}
+                      </span>
+                    )}
                     <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300">
                       {genres}
                     </span>
