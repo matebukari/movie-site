@@ -3,6 +3,7 @@ import { Menu, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import { useCountry } from "../context/CountryContext";
+import logo from "../../assets/logo.svg"; // adjust path if needed
 
 export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -20,17 +21,28 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
 
   return (
     <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50 shadow-md">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4">
-        {/* Brand */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+        {/* Logo */}
         <Link
           to="/"
           onClick={closeMenu}
-          className="text-2xl font-bold text-blue-500 hover:text-blue-400 transition"
+          className="flex items-center gap-3 min-w-0"
         >
-          StreamScope
+          <div className="relative flex items-center justify-center h-10 w-auto overflow-visible xl:-ml-10 2xl:-ml-16">
+            <img
+              src={logo}
+              alt="StreamScope logo"
+              className="
+                h-full w-auto object-contain contrast-125
+                origin-left transition-transform duration-300
+                scale-[2] sm:scale-[2.4] md:scale-[3.2] lg:scale-[3.5] xl:scale-[3.8]
+              "
+              style={{ transformOrigin: "left center" }}
+            />
+          </div>
         </Link>
 
-        {/* Search (Desktop Only) */}
+        {/* Desktop Search */}
         <div className="hidden lg:flex flex-1 justify-center px-6">
           <SearchBar
             searchQuery={searchQuery}
@@ -69,7 +81,18 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
         </button>
       </div>
 
-      {/* Mobile Menu */}
+      {/* Mobile Search (always visible) */}
+      <div className="block lg:hidden px-4 pb-3">
+        <SearchBar
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          country={country}
+          setCountry={setCountry}
+          onSearch={onSearch}
+        />
+      </div>
+
+      {/*  Mobile Menu  */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-800 px-6 py-4 bg-gray-900">
           <div className="flex flex-col items-center gap-4">
@@ -88,15 +111,6 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
                 </Link>
               );
             })}
-
-            {/* Search in Mobile Menu */}
-            <SearchBar
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              country={country}
-              setCountry={setCountry}
-              onSearch={onSearch}
-            />
           </div>
         </div>
       )}
