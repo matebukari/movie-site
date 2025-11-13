@@ -5,7 +5,7 @@ import SearchBar from "./SearchBar";
 import { useCountry } from "../context/CountryContext";
 import logo from "../../assets/logo.svg";
 
-export default function Navbar({ searchQuery, setSearchQuery, onSearch }) { // âœ… use passed onSearch
+export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const { country, setCountry } = useCountry();
   const location = useLocation();
@@ -22,13 +22,14 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) { // â
   return (
     <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50 shadow-md">
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
+
         {/* Logo */}
         <Link
           to="/"
           onClick={closeMenu}
           className="flex items-center gap-3 min-w-0"
         >
-          <div className="relative flex items-center justify-center h-10 w-auto overflow-visible xl:-ml-10 2xl:-ml-16">
+          <div className="relative flex items-center justify-center h-10 overflow-visible xl:-ml-10 2xl:-ml-16">
             <img
               src={logo}
               alt="StreamScope logo"
@@ -49,7 +50,7 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) { // â
             setSearchQuery={setSearchQuery}
             country={country}
             setCountry={setCountry}
-            onSearch={onSearch} // âœ… use the callback from HomePage
+            onSearch={onSearch}
           />
         </div>
 

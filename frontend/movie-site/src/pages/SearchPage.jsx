@@ -10,16 +10,23 @@ const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function SearchPage() {
   const [searchParams] = useSearchParams();
-  const query = searchParams.get("q");
+  const queryParam = searchParams.get("q") || "";
   const { country, countryDetected } = useCountry();
 
+  const [searchQuery, setSearchQuery] = useState(queryParam);
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
+  // Sync search bar with URL
   useEffect(() => {
-    if (!query || !countryDetected) return;
+    setSearchQuery(queryParam);
+  }, [queryParam]);
+
+  useEffect(() => {
+    if (!searchQuery || !countryDetected) return;
+
     setLoading(true);
     setError("");
     setShows([]);
@@ -27,7 +34,7 @@ export default function SearchPage() {
     const fetchSearchResults = async () => {
       try {
         const res = await fetch(
-          `${API_BASE}/titles/search?query=${encodeURIComponent(query)}&country=${country}`
+          `${API_BASE}/titles/search?query=${encodeURIComponent(searchQuery)}&country=${country}`
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to fetch search results");
@@ -41,15 +48,25 @@ export default function SearchPage() {
     };
 
     fetchSearchResults();
-  }, [query, country, countryDetected]);
+  }, [searchQuery, country, countryDetected]);
 
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
-      <Navbar />
+      <Navbar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onSearch={(q, selectedCountry) => {
+          const params = new URLSearchParams();
+          params.set("q", q);
+          params.set("country", selectedCountry || country);
+          window.history.replaceState({}, "", `/search?${params.toString()}`);
+        }}
+      />
+
       <main className="p-8">
-        {query && (
+        {searchQuery && (
           <h1 className="text-3xl font-semibold text-blue-400 mb-6 text-center">
-            Search results for: <span className="text-white">{query}</span>
+            Search results for: <span className="text-white">{searchQuery}</span>
           </h1>
         )}
 
@@ -70,7 +87,7 @@ export default function SearchPage() {
         ) : (
           !loading && (
             <p className="text-center text-gray-400 mt-10">
-              {query ? "No results found." : "Start by typing a search query above."}
+              {searchQuery ? "No results found." : "Start by typing a search query above."}
             </p>
           )
         )}

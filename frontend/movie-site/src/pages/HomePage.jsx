@@ -11,9 +11,9 @@ import { fetchShowsGeneric } from "../hooks/useFetchShows";
 const API_BASE = import.meta.env.VITE_API_URL;
 const PAGE_LIMIT = 20;
 
-// 🔥 FIX: Universal deduplication helper
+// 🔥 Clean helper (dedupe by id)
 const dedupeById = (arr) =>
-  Array.from(new Map(arr.map((item) => [item.id, item])).values());
+  Array.from(new Map(arr.map((s) => [s.id, s])).values());
 
 export default function HomePage() {
   const { country, countryDetected } = useCountry();
@@ -27,12 +27,13 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  // Load cached shows when switching countries
+  /* -----------------------------------------------------------
+   *  Load Cached Data on Country Switch
+   * --------------------------------------------------------- */
   useEffect(() => {
     const cache = getCache();
     if (cache) {
-      const unique = dedupeById(cache.results);
-      setShows(unique);
+      setShows(dedupeById(cache.results));
       setPage(cache.nextPage ?? 6);
       setHasMore(cache.hasMore ?? true);
     } else {
@@ -42,9 +43,16 @@ export default function HomePage() {
     }
   }, [country]);
 
-  // Main fetch function (search + by-country)
+  /* -----------------------------------------------------------
+   *  Core Fetch Function (Search + Country Lists)
+   * --------------------------------------------------------- */
   const fetchShows = useCallback(
-    async (reset = false, customPage = null, customQuery = null, customCountry = null) => {
+    async (
+      reset = false,
+      customPage = null,
+      customQuery = null,
+      customCountry = null
+    ) => {
       if (loading || !countryDetected) return;
 
       setLoading(true);
@@ -56,17 +64,17 @@ export default function HomePage() {
 
       const endpoint =
         query.trim()
-          ? `${API_BASE}/titles/search?query=${encodeURIComponent(query)}&country=${selectedCountry}&page=${currentPage}`
+          ? `${API_BASE}/titles/search?query=${encodeURIComponent(
+              query
+            )}&country=${selectedCountry}&page=${currentPage}`
           : `${API_BASE}/titles/by-country?country=${selectedCountry}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
       try {
-        // Fetch + merge
         const { results, hasMore: more } = await fetchShowsGeneric(
           endpoint,
           reset ? [] : shows
         );
 
-        // Dedupe AFTER merging
         const unique = dedupeById(results);
 
         setShows(unique);
@@ -83,10 +91,12 @@ export default function HomePage() {
     [country, countryDetected, page, searchQuery, shows, loading]
   );
 
-  //  Preload 5 pages on first load (deduped)
+  /* -----------------------------------------------------------
+   *  Initial Preload (5 pages)
+   * --------------------------------------------------------- */
   useEffect(() => {
     if (!countryDetected || !country) return;
-    if (getCache()) return;
+    if (getCache()) return; // Already loaded
 
     const loadInitial = async () => {
       setLoading(true);
@@ -98,22 +108,19 @@ export default function HomePage() {
       try {
         const pages = [1, 2, 3, 4, 5];
 
-        const allResults = await Promise.all(
+        const results = await Promise.all(
           pages.map(async (p) => {
-            const endpoint = `${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${p}`;
-            const { results } = await fetchShowsGeneric(endpoint);
+            const url = `${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${p}`;
+            const { results } = await fetchShowsGeneric(url);
             return results;
           })
         );
 
-        // Dedupe combined pages
-        const combined = dedupeById(allResults.flat());
+        const combined = dedupeById(results.flat());
 
         setShows(combined);
         setPage(6);
         setHasMore(combined.length > 0);
-
-        // Save to cache
         setCache(combined, 6, combined.length > 0);
       } catch (err) {
         console.error("Failed to preload shows:", err);
@@ -126,23 +133,35 @@ export default function HomePage() {
     loadInitial();
   }, [countryDetected, country]);
 
-  // Infinite scroll fetch
+  /* -----------------------------------------------------------
+   *  Infinite Scroll
+   * --------------------------------------------------------- */
   useInfiniteScroll(() => {
     if (!loading && hasMore) fetchShows();
   }, [loading, hasMore, country]);
 
-  // Modal fetch (per show)
+  /* -----------------------------------------------------------
+   *  Show Modal Fetch
+   * --------------------------------------------------------- */
   const handleShowClick = async (show) => {
     try {
-      const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
+      const res = await fetch(
+        `${API_BASE}/titles/${show.id}/sources?country=${country}`
+      );
       const data = await res.json();
-      setSelectedShow({ ...show, platforms: data.platforms || [] });
+
+      setSelectedShow({
+        ...show,
+        platforms: data.platforms || [],
+      });
     } catch (err) {
       console.error("Error fetching show details:", err);
     }
   };
 
-  // Render
+  /* -----------------------------------------------------------
+   *  Loading screen while detecting country
+   * --------------------------------------------------------- */
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -151,14 +170,14 @@ export default function HomePage() {
     );
   }
 
+  /* -----------------------------------------------------------
+   *  Render
+   * --------------------------------------------------------- */
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        onSearch={(query, selectedCountry) =>
-          fetchShows(true, 1, query, selectedCountry)
-        }
       />
 
       <main className="p-8">

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Search } from "lucide-react";
 import CountrySelector from "./CountrySelector";
 
@@ -22,12 +22,14 @@ export default function SearchBar({
 
   const handleSearch = (query = searchQuery) => {
     const safeQuery = (query || "").trim();
-    if (safeQuery.length > 0) {
-      navigate(`/search?q=${encodeURIComponent(safeQuery)}`);
-      setShowSuggestions(false);
-      setActiveIndex(-1);
-    }
+    if (!safeQuery) return;
+
+    navigate(`/search?q=${encodeURIComponent(safeQuery)}&country=${country}`);
+
+    setShowSuggestions(false);
+    setActiveIndex(-1);
   };
+
 
   // Debounced suggestion fetching
   useEffect(() => {
@@ -92,8 +94,6 @@ export default function SearchBar({
         setShowSuggestions(false);
         setActiveIndex(-1);
         break;
-      default:
-        break;
     }
   };
 
@@ -121,6 +121,7 @@ export default function SearchBar({
           onKeyDown={handleKeyDown}
           className="w-full px-4 py-2 bg-gray-800 border border-gray-700 text-white rounded-md sm:rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all h-11 pr-10"
         />
+
         <button
           onClick={() => handleSearch()}
           aria-label="Search"
@@ -136,22 +137,17 @@ export default function SearchBar({
             className="absolute top-full mt-1 w-full bg-gray-900 border border-gray-700 rounded-md shadow-lg z-30 max-h-64 overflow-y-auto"
           >
             {loadingSuggestions && (
-              <li className="px-4 py-2 text-gray-400 text-sm italic">
-                Loading...
-              </li>
+              <li className="px-4 py-2 text-gray-400 text-sm italic">Loading...</li>
             )}
+
             {suggestions.map((s, i) => (
               <li
                 key={`${s.id || s.title || s.name}-${i}`}
                 onMouseEnter={() => setActiveIndex(i)}
                 onMouseLeave={() => setActiveIndex(-1)}
-                onClick={() =>
-                  handleSearch(s.title || s.name)
-                }
+                onClick={() => handleSearch(s.title || s.name)}
                 className={`px-4 py-2 cursor-pointer text-gray-200 text-sm transition-colors ${
-                  activeIndex === i
-                    ? "bg-gray-700 text-white"
-                    : "hover:bg-gray-800"
+                  activeIndex === i ? "bg-gray-700 text-white" : "hover:bg-gray-800"
                 }`}
               >
                 {s.title || s.name}
@@ -166,14 +162,13 @@ export default function SearchBar({
         country={country}
         setCountry={setCountry}
         onCountryChange={(newCountry) => {
-          if (searchQuery.trim()) {
-            onSearch?.(searchQuery, newCountry);
-          } else {
-            onSearch?.("", newCountry); // reload by-country shows
+          if (window.location.pathname === "/search") {
+            if (searchQuery.trim()) {
+              navigate(`/search?q=${encodeURIComponent(searchQuery)}&country=${newCountry}`);
+            }
           }
         }}
       />
-
     </div>
   );
 }
