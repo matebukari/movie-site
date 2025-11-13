@@ -3,9 +3,9 @@ import { Menu, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import { useCountry } from "../context/CountryContext";
-import logo from "../../assets/logo.svg"; // adjust path if needed
+import logo from "../../assets/logo.svg";
 
-export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
+export default function Navbar({ searchQuery, setSearchQuery, onSearch }) { // ✅ use passed onSearch
   const [menuOpen, setMenuOpen] = useState(false);
   const { country, setCountry } = useCountry();
   const location = useLocation();
@@ -49,7 +49,7 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
             setSearchQuery={setSearchQuery}
             country={country}
             setCountry={setCountry}
-            onSearch={onSearch}
+            onSearch={onSearch} // ✅ use the callback from HomePage
           />
         </div>
 
@@ -81,7 +81,7 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
         </button>
       </div>
 
-      {/* Mobile Search (always visible) */}
+      {/* Mobile Search */}
       <div className="block lg:hidden px-4 pb-3">
         <SearchBar
           searchQuery={searchQuery}
@@ -92,7 +92,7 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
         />
       </div>
 
-      {/*  Mobile Menu  */}
+      {/* Mobile Menu */}
       {menuOpen && (
         <div className="md:hidden border-t border-gray-800 px-6 py-4 bg-gray-900">
           <div className="flex flex-col items-center gap-4">
