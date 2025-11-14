@@ -37,7 +37,11 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
       <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-4">
         
         {/* LOGO */}
-        <Link to="/" onClick={closeMenu} className="flex items-center min-w-0">
+        <Link to="/" onClick={()=>{
+          closeMenu();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+          }} 
+          className="flex items-center min-w-0">
           <img
             src={logo}
             alt="StreamScope logo"
@@ -76,6 +80,7 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
               <Link
                 key={name}
                 to={path}
+                onClick={window.scrollTo({ top: 0, behavior: "smooth" })}
                 className={`
                   px-2 py-1 transition rounded-md
                   ${
