@@ -30,7 +30,7 @@ export default function CountrySelector({ country, setCountry, onCountryChange }
     setIsOpen(false);
   };
 
-  // Close when clicking outside
+  // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!dropdownRef.current?.contains(e.target)) setIsOpen(false);
@@ -41,14 +41,15 @@ export default function CountrySelector({ country, setCountry, onCountryChange }
 
   return (
     <div className="relative sm:h-11" ref={dropdownRef}>
-      {/* Rounded Button */}
+      
+      {/* Button */}
       <button
         onClick={() => setIsOpen((prev) => !prev)}
         className="
           flex items-center justify-center gap-2 h-full w-full sm:w-auto px-4
           bg-gray-800 text-white border border-gray-700
           hover:bg-gray-700 transition rounded-xl
-          hover:drop-shadow-[0_0_8px_#3b82f6]
+          hover:drop-shadow-[0_0_10px_#ef4444]
         "
       >
         <img
@@ -77,7 +78,7 @@ export default function CountrySelector({ country, setCountry, onCountryChange }
             absolute right-0 mt-2 w-48 
             bg-gray-900 border border-gray-700 rounded-2xl shadow-xl
             z-9999 max-h-64 overflow-y-auto p-1
-            drop-shadow-[0_0_12px_rgba(59,130,246,0.35)]
+            drop-shadow-[0_0_14px_rgba(239,68,68,0.35)]
           "
         >
           {countryOptions.map((c) => (
@@ -89,8 +90,8 @@ export default function CountrySelector({ country, setCountry, onCountryChange }
                 text-left text-gray-200 rounded-xl transition
                 ${
                   c.code === country
-                    ? "bg-gray-800 drop-shadow-[0_0_8px_#3b82f6]"
-                    : "hover:bg-gray-800 hover:text-blue-400 hover:drop-shadow-[0_0_8px_#3b82f6]"
+                    ? "bg-gray-800 text-red-400 drop-shadow-[0_0_10px_#ef4444]"
+                    : "hover:bg-gray-800 hover:text-red-400 hover:drop-shadow-[0_0_8px_#ef4444]"
                 }
               `}
             >

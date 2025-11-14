@@ -21,24 +21,23 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <nav className="sticky top-4 z-50
-      w-[98%] mx-auto
-      rounded-2xl
-      border border-gray-700/40
-      bg-gray-900/60 
-      backdrop-blur-xl
-      shadow-[0_4px_20px_rgba(0,0,0,0.45)]
-      ring-1 ring-gray-800/60
-    ">
-      {/* TOP BAR — now thicker */}
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
+    <nav
+      className="
+        sticky top-4 z-50
+        w-[98%] mx-auto
+        rounded-2xl
+        border border-gray-700/40
+        bg-gray-900/60 
+        backdrop-blur-xl
+        shadow-[0_4px_20px_rgba(0,0,0,0.45)]
+        ring-1 ring-gray-800/60
+      "
+    >
+      {/* TOP BAR */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-4">
         
-        {/* lOGO */}
-        <Link
-          to="/"
-          onClick={closeMenu}
-          className="flex items-center min-w-0"
-        >
+        {/* LOGO */}
+        <Link to="/" onClick={closeMenu} className="flex items-center min-w-0">
           <img
             src={logo}
             alt="StreamScope logo"
@@ -46,7 +45,7 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
               h-12 w-auto object-contain contrast-125
               origin-left transition-transform duration-300
               scale-[2.5] sm:scale-[2.8] md:scale-[3.3] lg:scale-[3.6] xl:scale-[4]
-              hover:drop-shadow-[0_0_10px_#3b82f6]
+              hover:drop-shadow-[0_0_12px_#ef4444]
               -ml-1.5 sm:-ml-3 md:-ml-5 lg:-ml-7 xl:-ml-9
             "
             style={{ transformOrigin: 'left center' }}
@@ -64,8 +63,8 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
           />
         </div>
 
-        {/* Desktop Country Selector */}
-        <div className="hidden lg:block">
+        {/* Country Selector (visible on md+, hidden on mobile) */}
+        <div className="hidden md:flex lg:block md:ml-4">
           <CountrySelector country={country} setCountry={setCountry} />
         </div>
 
@@ -77,11 +76,14 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
               <Link
                 key={name}
                 to={path}
-                className={`px-2 py-1 transition rounded-md ${
-                  active
-                    ? "text-blue-400 font-semibold drop-shadow-[0_0_6px_#3b82f6]"
-                    : "text-gray-300 hover:text-blue-400 hover:drop-shadow-[0_0_6px_#3b82f6]"
-                }`}
+                className={`
+                  px-2 py-1 transition rounded-md
+                  ${
+                    active
+                      ? "text-red-400 font-semibold drop-shadow-[0_0_8px_#ef4444]"
+                      : "text-gray-300 hover:text-red-400 hover:drop-shadow-[0_0_8px_#ef4444]"
+                  }
+                `}
               >
                 {name}
               </Link>
@@ -93,7 +95,7 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
         <button
           onClick={toggleMenu}
           aria-label="Toggle menu"
-          className="md:hidden text-gray-300 hover:text-blue-400 transition"
+          className="md:hidden text-gray-300 hover:text-red-400 transition"
         >
           {menuOpen ? <X size={26} /> : <Menu size={26} />}
         </button>
@@ -114,10 +116,12 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
       {menuOpen && (
         <div className="md:hidden border-t border-gray-800 bg-gray-900/95 backdrop-blur-xl px-6 py-5 relative animate-slide-down">
 
-          {/* Country Selector Box */}
+          {/* Country Selector inside mobile menu */}
           <div className="relative z-50 pb-4 mb-4 border-b border-gray-700">
             <div className="w-full bg-gray-800/70 border border-gray-700 rounded-xl p-4 shadow-lg backdrop-blur text-center">
-              <p className="text-gray-300 mb-2 text-sm tracking-wide">Change Country</p>
+              <p className="text-gray-300 mb-2 text-sm tracking-wide">
+                Change Country
+              </p>
 
               <div className="flex justify-center">
                 <CountrySelector country={country} setCountry={setCountry} />
@@ -134,11 +138,14 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
                   key={name}
                   to={path}
                   onClick={closeMenu}
-                  className={`text-lg transition ${
-                    active
-                      ? "text-blue-400 font-semibold drop-shadow-[0_0_6px_#3b82f6]"
-                      : "text-gray-300 hover:text-blue-400 hover:drop-shadow-[0_0_6px_#3b82f6]"
-                  }`}
+                  className={`
+                    text-lg transition
+                    ${
+                      active
+                        ? "text-red-400 font-semibold drop-shadow-[0_0_8px_#ef4444]"
+                        : "text-gray-300 hover:text-red-400 hover:drop-shadow-[0_0_8px_#ef4444]"
+                    }
+                  `}
                 >
                   {name}
                 </Link>
