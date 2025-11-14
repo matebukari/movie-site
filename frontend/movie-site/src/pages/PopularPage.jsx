@@ -115,9 +115,31 @@ export default function PopularPage() {
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar />
       <main className="p-8">
-        <h1 className="text-3xl font-semibold mb-6 text-center text-blue-400">
-          🌟 Popular in {country?.toUpperCase() || "US"}
-        </h1>
+        <h1
+  className="
+    flex items-center gap-3 mb-10
+    text-3xl font-bold
+    justify-center md:justify-start   /* Center on mobile → left on desktop */
+    text-center md:text-left
+  "
+>
+  {/* Glowing text */}
+  <span className="text-red-400 tracking-wide drop-shadow-[0_0_10px_#ef4444]">
+    Popular in
+  </span>
+
+  {/* Clean flag (no glow) */}
+  <img
+    src={`https://flagcdn.com/w40/${country?.toLowerCase()}.png`}
+    alt={country}
+    className="h-6 w-8 object-cover rounded-md border border-gray-700"
+  />
+</h1>
+
+
+
+
+
 
         <ShowsGrid
           shows={shows}

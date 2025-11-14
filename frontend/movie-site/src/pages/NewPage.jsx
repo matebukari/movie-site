@@ -22,7 +22,6 @@ export default function NewPage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  // Load from Cache
   useEffect(() => {
     const cache = getCache();
     if (cache) {
@@ -32,7 +31,6 @@ export default function NewPage() {
     }
   }, [country]);
 
-  // Fetch new releases
   const fetchNewTitles = useCallback(
     async (reset = false, customPage = null) => {
       if (loading || !countryDetected) return;
@@ -44,7 +42,10 @@ export default function NewPage() {
       const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
       try {
-        const { results, hasMore: more } = await fetchShowsGeneric(endpoint, reset ? [] : shows);
+        const { results, hasMore: more } = await fetchShowsGeneric(
+          endpoint,
+          reset ? [] : shows
+        );
         setShows(results);
         setHasMore(more);
         setCache(results, currentPage + 1, more);
@@ -59,7 +60,6 @@ export default function NewPage() {
     [country, countryDetected, page, shows, loading]
   );
 
-  // Initial Preload (first 5 pages)
   useEffect(() => {
     if (!countryDetected || !country) return;
     if (getCache()) return;
@@ -97,12 +97,10 @@ export default function NewPage() {
     loadInitial();
   }, [countryDetected, country]);
 
-  // Infinite Scroll
   useInfiniteScroll(() => {
     if (!loading && hasMore) fetchNewTitles();
   }, [loading, hasMore, country]);
 
-  // Render
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -116,8 +114,25 @@ export default function NewPage() {
       <Navbar />
 
       <main className="p-8">
-        <h1 className="text-3xl font-semibold mb-6 text-center text-blue-400">
-          New Releases in {country?.toUpperCase() || "US"}
+
+        {/* ⭐ Updated responsive heading */}
+        <h1
+          className="
+            flex items-center gap-3 mb-10
+            text-3xl font-bold
+            justify-center md:justify-start
+            text-center md:text-left
+          "
+        >
+          <span className="text-red-400 tracking-wide drop-shadow-[0_0_10px_#ef4444]">
+            New Releases in
+          </span>
+
+          <img
+            src={`https://flagcdn.com/w40/${country?.toLowerCase()}.png`}
+            alt={country}
+            className="h-6 w-8 object-cover rounded-md border border-gray-700"
+          />
         </h1>
 
         <ShowsGrid
