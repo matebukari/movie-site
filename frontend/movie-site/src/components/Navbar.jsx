@@ -3,6 +3,7 @@ import { Menu, X } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import SearchBar from "./SearchBar";
 import { useCountry } from "../context/CountryContext";
+import CountrySelector from "./CountrySelector";
 import logo from "../../assets/logo.svg";
 
 export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
@@ -16,35 +17,44 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
     { name: "Popular", path: "/popular" },
   ];
 
-  const toggleMenu = () => setMenuOpen((prev) => !prev);
+  const toggleMenu = () => setMenuOpen((p) => !p);
   const closeMenu = () => setMenuOpen(false);
 
   return (
-    <nav className="bg-gray-900 border-b border-gray-800 sticky top-0 z-50 shadow-md">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4">
-
-        {/* Logo */}
+    <nav className="sticky top-4 z-50
+      w-[98%] mx-auto
+      rounded-2xl
+      border border-gray-700/40
+      bg-gray-900/60 
+      backdrop-blur-xl
+      shadow-[0_4px_20px_rgba(0,0,0,0.45)]
+      ring-1 ring-gray-800/60
+    ">
+      {/* TOP BAR — now thicker */}
+      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 sm:px-6 py-3">
+        
+        {/* lOGO */}
         <Link
           to="/"
           onClick={closeMenu}
-          className="flex items-center gap-3 min-w-0"
+          className="flex items-center min-w-0"
         >
-          <div className="relative flex items-center justify-center h-10 overflow-visible xl:-ml-10 2xl:-ml-16">
-            <img
-              src={logo}
-              alt="StreamScope logo"
-              className="
-                h-full w-auto object-contain contrast-125
-                origin-left transition-transform duration-300
-                scale-[2] sm:scale-[2.4] md:scale-[3.2] lg:scale-[3.5] xl:scale-[3.8]
-              "
-              style={{ transformOrigin: "left center" }}
-            />
-          </div>
+          <img
+            src={logo}
+            alt="StreamScope logo"
+            className="
+              h-12 w-auto object-contain contrast-125
+              origin-left transition-transform duration-300
+              scale-[2.5] sm:scale-[2.8] md:scale-[3.3] lg:scale-[3.6] xl:scale-[4]
+              hover:drop-shadow-[0_0_10px_#3b82f6]
+              -ml-1.5 sm:-ml-3 md:-ml-5 lg:-ml-7 xl:-ml-9
+            "
+            style={{ transformOrigin: 'left center' }}
+          />
         </Link>
 
         {/* Desktop Search */}
-        <div className="hidden lg:flex flex-1 justify-center px-6">
+        <div className="hidden lg:flex flex-1 justify-center px-8">
           <SearchBar
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
@@ -54,16 +64,23 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
           />
         </div>
 
+        {/* Desktop Country Selector */}
+        <div className="hidden lg:block">
+          <CountrySelector country={country} setCountry={setCountry} />
+        </div>
+
         {/* Desktop Nav Links */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-6 ml-6">
           {navItems.map(({ name, path }) => {
             const active = location.pathname === path;
             return (
               <Link
                 key={name}
                 to={path}
-                className={`text-gray-300 hover:text-blue-400 transition ${
-                  active ? "text-blue-400 font-semibold" : ""
+                className={`px-2 py-1 transition rounded-md ${
+                  active
+                    ? "text-blue-400 font-semibold drop-shadow-[0_0_6px_#3b82f6]"
+                    : "text-gray-300 hover:text-blue-400 hover:drop-shadow-[0_0_6px_#3b82f6]"
                 }`}
               >
                 {name}
@@ -78,7 +95,7 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
           aria-label="Toggle menu"
           className="md:hidden text-gray-300 hover:text-blue-400 transition"
         >
-          {menuOpen ? <X size={24} /> : <Menu size={24} />}
+          {menuOpen ? <X size={26} /> : <Menu size={26} />}
         </button>
       </div>
 
@@ -93,10 +110,23 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
         />
       </div>
 
-      {/* Mobile Menu */}
+      {/* MOBILE MENU */}
       {menuOpen && (
-        <div className="md:hidden border-t border-gray-800 px-6 py-4 bg-gray-900">
-          <div className="flex flex-col items-center gap-4">
+        <div className="md:hidden border-t border-gray-800 bg-gray-900/95 backdrop-blur-xl px-6 py-5 relative animate-slide-down">
+
+          {/* Country Selector Box */}
+          <div className="relative z-50 pb-4 mb-4 border-b border-gray-700">
+            <div className="w-full bg-gray-800/70 border border-gray-700 rounded-xl p-4 shadow-lg backdrop-blur text-center">
+              <p className="text-gray-300 mb-2 text-sm tracking-wide">Change Country</p>
+
+              <div className="flex justify-center">
+                <CountrySelector country={country} setCountry={setCountry} />
+              </div>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="relative z-10 flex flex-col items-center gap-5 pt-3">
             {navItems.map(({ name, path }) => {
               const active = location.pathname === path;
               return (
@@ -104,8 +134,10 @@ export default function Navbar({ searchQuery, setSearchQuery, onSearch }) {
                   key={name}
                   to={path}
                   onClick={closeMenu}
-                  className={`block text-gray-300 hover:text-blue-400 transition ${
-                    active ? "text-blue-400 font-semibold" : ""
+                  className={`text-lg transition ${
+                    active
+                      ? "text-blue-400 font-semibold drop-shadow-[0_0_6px_#3b82f6]"
+                      : "text-gray-300 hover:text-blue-400 hover:drop-shadow-[0_0_6px_#3b82f6]"
                   }`}
                 >
                   {name}

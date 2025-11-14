@@ -7,3 +7,32 @@
 .animate-fadeIn {
   animation: fadeIn 0.5s ease forwards;
 }
+
+
+/* Neon glow hover (blue) */
+.neon-hover {
+  transition: all 0.25s ease;
+}
+
+.neon-hover:hover {
+  box-shadow: 0 0 8px rgba(0, 150, 255, 0.8), 
+              0 0 16px rgba(0, 150, 255, 0.6),
+              0 0 24px rgba(0, 150, 255, 0.4);
+  filter: brightness(1.25);
+}
+
+
+@keyframes slideUp {
+  from {
+    transform: translateY(40px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0px);
+    opacity: 1;
+  }
+}
+
+.slide-up {
+  animation: slideUp 0.28s ease-out forwards;
+}
