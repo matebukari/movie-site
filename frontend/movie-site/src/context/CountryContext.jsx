@@ -6,21 +6,34 @@ export const CountryProvider = ({ children }) => {
   const [country, setCountry] = useState("us");
   const [countryDetected, setCountryDetected] = useState(false);
 
+  const SUPPORTED_COUNTRIES = ["us", "gb", "ca", "au", "in", "es", "br"];
+
   useEffect(() => {
     const detectCountry = async () => {
+      // First try to load from localStorage
+      const saved = localStorage.getItem("country");
+      if (saved && SUPPORTED_COUNTRIES.includes(saved)) {
+        setCountry(saved);
+        setCountryDetected(true);
+        return;
+      }
+
       try {
-        const res = await fetch(`${import.meta.env.VITE_API_URL}/utils/detect-country`);
+        // Detect via frontend IP lookup
+        const res = await fetch("https://ipwho.is/");
         const data = await res.json();
 
-        if (data?.country) {
-          setCountry(data.country);
-          localStorage.setItem("country", data.country);
-        } else {
-          const saved = localStorage.getItem("country");
-          setCountry(saved || "us");
+        let detected = data.country_code?.toLowerCase() || "us";
+
+        // Fallback if unsupported
+        if (!SUPPORTED_COUNTRIES.includes(detected)) {
+          detected = "us";
         }
-      } catch {
-        const saved = localStorage.getItem("country");
+
+        setCountry(detected);
+        localStorage.setItem("country", detected);
+      } catch (err) {
+        console.error("Country detection failed:", err);
         setCountry(saved || "us");
       } finally {
         setCountryDetected(true);
