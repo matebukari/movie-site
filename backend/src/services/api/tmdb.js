@@ -10,8 +10,6 @@ export const fetchTMDBDetails = async ({ tmdb_id, title, type = "movie" }) => {
   try {
     const tmdbType = type === "tv_series" ? "tv" : "movie";
     let data = null;
-
-    // 1️⃣ Try by TMDB ID first
     if (tmdb_id) {
       try {
         const res = await axios.get(`${TMDB_BASE_URL}/${tmdbType}/${tmdb_id}`, {
@@ -31,7 +29,7 @@ export const fetchTMDBDetails = async ({ tmdb_id, title, type = "movie" }) => {
       }
     }
 
-    // 2️⃣ If ID fetch failed, search by title
+    // If ID fetch failed, search by title
     if (!data && title) {
       const searchRes = await axios.get(`${TMDB_BASE_URL}/search/${tmdbType}`, {
         params: {
@@ -59,7 +57,7 @@ export const fetchTMDBDetails = async ({ tmdb_id, title, type = "movie" }) => {
 
     if (!data) return null;
 
-    // 🎬 Extract trailer (YouTube)
+    // Extract trailer (YouTube)
     const youtubeTrailer = data.videos?.results?.find(
       (v) => v.type === "Trailer" && v.site === "YouTube"
     );
@@ -68,7 +66,7 @@ export const fetchTMDBDetails = async ({ tmdb_id, title, type = "movie" }) => {
       ? `https://www.youtube.com/watch?v=${youtubeTrailer.key}`
       : null;
 
-    // ✅ Return normalized data (including runtime for both TV and movies)
+    // Return normalized data
     return {
       id: data.id,
       title: data.title || data.name,

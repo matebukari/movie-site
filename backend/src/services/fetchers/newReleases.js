@@ -10,8 +10,6 @@ export const fetchNewReleases = async (country = "us", limit = 15, page = 1) => 
   if (cached) return cached;
 
   try {
-    console.log(`📅 Fetching newest titles for ${country.toUpperCase()} (page ${page})`);
-
     const { data } = await getWatchmodeList({
       regions: country.toUpperCase(),
       limit,
@@ -24,8 +22,6 @@ export const fetchNewReleases = async (country = "us", limit = 15, page = 1) => 
       console.warn("⚠️ Watchmode returned unexpected data:", data);
       return [];
     }
-
-    console.log(`📦 Watchmode returned ${data.titles.length} titles for new releases (${country})`);
 
     const shows = data.titles;
 
@@ -48,7 +44,6 @@ export const fetchNewReleases = async (country = "us", limit = 15, page = 1) => 
     const results = detailed.filter((s) => s?.poster);
     await setCache(cacheKey, results);
 
-    console.log(`✅ Cached ${results.length} new releases for ${country}`);
     return results;
   } catch (err) {
     console.error("❌ Error in fetchNewReleases:", err.message);

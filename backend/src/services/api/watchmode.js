@@ -32,17 +32,12 @@ const handleRequest = async (url, params = {}) => {
 };
 
 
-export const getWatchmodeTitleDetails = (id) =>
-  handleRequest(`/title/${id}/details/`);
+export const getWatchmodeTitleDetails = (id) => handleRequest(`/title/${id}/details/`);
 
-export const getWatchmodeList = (params) =>
-  handleRequest(`/list-titles/`, params);
+export const getWatchmodeList = (params) => handleRequest(`/list-titles/`, params);
 
-export const getWatchmodeSearch = (params) =>
-  handleRequest(`/search/`, params);
+export const getWatchmodeSearch = (params) => handleRequest(`/search/`, params);
 
-export const getWatchmodeReleases = (params) =>
-  handleRequest(`/releases/`, params);
+export const getWatchmodeReleases = (params) => handleRequest(`/releases/`, params);
 
-export const getWatchmodeSources = (id, regions) =>
-  handleRequest(`/title/${id}/sources/`, { regions });
+export const getWatchmodeSources = (id, regions) => handleRequest(`/title/${id}/sources/`, { regions });

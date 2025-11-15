@@ -5,9 +5,8 @@ import { getCache, setCache } from "../api/cache.js";
 
 export const fetchShowsBySearch = async (query, country = "us", page = 1) => {
   const cacheKey = `search-${query}-${country}-${page}`;
-  const cached = await getCache(cacheKey); // ✅ await here
+  const cached = await getCache(cacheKey);
   if (cached) {
-    console.log(`⚡ Returning cached search results for "${query}" (${country})`);
     return cached;
   }
 
@@ -46,10 +45,9 @@ export const fetchShowsBySearch = async (query, country = "us", page = 1) => {
 
     const filtered = results.filter((s) => s?.poster);
     await setCache(cacheKey, filtered);
-    console.log(`✅ Cached ${filtered.length} search results for "${query}" (${country})`);
     return filtered;
   } catch (err) {
     console.error("❌ Error in fetchShowsBySearch:", err.message);
-    return []; // ✅ Always return an array to prevent crashes
+    return [];
   }
 };

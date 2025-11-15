@@ -1,4 +1,3 @@
-// server.js
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
@@ -6,7 +5,6 @@ import titlesRouter from "./routes/titles.js"
 import utilsRouter from "./routes/utils.js"
 import compression from "compression";
 import { fetchShowsByCountry } from "./services/fetchers/byCountry.js";
-
 
 dotenv.config();
 
@@ -22,9 +20,8 @@ app.use("/api/utils", utilsRouter);
 app.use("/api/titles", titlesRouter);
 
 app.get("/", (req, res) => {
-  res.send("Movie site API is running 🚀");
+  res.send("Movie site API is running");
 });
-
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)

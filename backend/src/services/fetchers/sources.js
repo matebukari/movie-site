@@ -5,7 +5,6 @@ export const fetchShowSources = async (showId, country = "us") => {
   const cacheKey = `sources-${showId}-${country}`;
   const cached = await getCache(cacheKey); // ✅ await this
   if (cached) {
-    console.log(`⚡ Using cached sources for ${showId} (${country})`);
     return cached;
   }
 
@@ -26,12 +25,6 @@ export const fetchShowSources = async (showId, country = "us") => {
           .filter(Boolean)
       )
     );
-
-    if (platforms.length === 0) {
-      console.log(`⚠️ No streaming sources found for ${showId} in ${country}`);
-    } else {
-      console.log(`✅ Found ${platforms.length} sources for ${showId} (${country})`);
-    }
 
     await setCache(cacheKey, platforms);
     return platforms;

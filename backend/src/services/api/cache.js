@@ -1,7 +1,6 @@
-// src/services/api/cache.js
 import Keyv from "keyv";
 
-// ⚙️ Store cache on disk; swap URL for Redis if you want later
+// Store cache on disk
 const keyv = new Keyv("sqlite://cache.sqlite");
 
 export const getCache = async (key) => {

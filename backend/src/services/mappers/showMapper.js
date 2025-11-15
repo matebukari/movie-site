@@ -1,6 +1,4 @@
-// src/services/mappers/showMapper.js
 export const mergeDetails = (wm, tmdb) => {
-  // 🎬 Poster and backdrop with fallbacks
   const poster =
     wm.poster_url ||
     (tmdb?.poster_path ? `https://image.tmdb.org/t/p/w500${tmdb.poster_path}` : wm.image_url || null);
@@ -9,7 +7,6 @@ export const mergeDetails = (wm, tmdb) => {
     wm.backdrop_url ||
     (tmdb?.backdrop_path ? `https://image.tmdb.org/t/p/original${tmdb.backdrop_path}` : null);
 
-  // 🕒 Runtime (supports both movies & TV)
   let rawRuntime = null;
 
   if (tmdb?.runtime && tmdb.runtime > 0) {
@@ -29,14 +26,7 @@ export const mergeDetails = (wm, tmdb) => {
 
   const runtimeText = formatRuntime(rawRuntime);
 
-  console.log("🧩 Merging details for:", wm.title || tmdb?.title || tmdb?.name, {
-    tmdb_runtime: tmdb?.runtime,
-    tmdb_episode_run_time: tmdb?.episode_run_time,
-    wm_runtime_minutes: wm.runtime_minutes,
-    resolved_runtime: rawRuntime,
-  });
-
-  // 🧠 Merge all fields safely
+  // Merge all fields safely
   return {
     id: wm.id || tmdb?.id,
     title: wm.title || tmdb?.title || tmdb?.name || "Untitled",

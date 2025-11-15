@@ -1,13 +1,12 @@
-// src/controllers/titlesController.js
 import {
   fetchShowsByCountry,
   fetchShowsBySearch,
   fetchShowSources,
   fetchNewReleases,
   fetchPopularShows,
-} from "../services/index.js"; // ✅ now imports from your new modular service entry
+} from "../services/index.js"; 
 
-// 🔍 Search shows by title
+// Search shows by title
 export const getShowsBySearch = async (req, res) => {
   try {
     const { query, country = "us", page = 1 } = req.query;
@@ -29,7 +28,7 @@ export const getShowsBySearch = async (req, res) => {
   }
 };
 
-// 🌍 Get shows available in a country
+// Get shows available in a country
 export const getShowsByCountry = async (req, res) => {
   try {
     const { country, limit, page } = req.query;
@@ -65,8 +64,7 @@ export const getShowsByCountry = async (req, res) => {
   }
 };
 
-
-// 🎬 Get available streaming platforms for a show
+// Get available streaming platforms for a show
 export const getShowSources = async (req, res) => {
   try {
     const { id } = req.params;
@@ -82,7 +80,7 @@ export const getShowSources = async (req, res) => {
   }
 };
 
-// 🆕 Get newly released titles
+// Get newly released titles
 export const getNewTitles = async (req, res) => {
   try {
     const { country = "us", limit = 15, page = 1 } = req.query;
@@ -107,8 +105,7 @@ export const getNewTitles = async (req, res) => {
   }
 };
 
-
-// 🔥 Get popular shows (based on Watchmode + TMDB)
+// Get popular shows (based on Watchmode + TMDB)
 export const getPopularTitles = async (req, res) => {
   try {
     const { country = "us", limit = 15, page = 1 } = req.query;

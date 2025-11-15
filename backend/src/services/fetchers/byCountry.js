@@ -6,7 +6,7 @@ import { getCache, setCache } from "../api/cache.js";
 export const fetchShowsByCountry = async (country, limit = 10, page = 1) => {
 
   const cacheKey = `country-${country}-${page}`;
-  const cached = await getCache(cacheKey); // ✅ FIXED — await here
+  const cached = await getCache(cacheKey);
 
   if (Array.isArray(cached) && cached.length > 0) {
     return cached;
@@ -44,7 +44,7 @@ export const fetchShowsByCountry = async (country, limit = 10, page = 1) => {
     );
 
     const results = detailed.filter((show) => show?.poster);
-    await setCache(cacheKey, results); // ✅ FIXED — await cache save
+    await setCache(cacheKey, results);
 
     return results;
   } catch (err) {
