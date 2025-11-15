@@ -23,15 +23,13 @@ export default function SearchBar({
     if (!safeQuery) return;
 
     navigate(`/search?q=${encodeURIComponent(safeQuery)}&country=${country}`);
-
-    // Notify parent if needed
     onSearch?.(safeQuery, country);
 
     setShowSuggestions(false);
     setActiveIndex(-1);
   };
 
-  // Fetch suggestions (debounced)
+  // Fetch suggestions
   useEffect(() => {
     const safeQuery = searchQuery.trim();
     if (safeQuery.length < 2) {

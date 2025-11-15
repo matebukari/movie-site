@@ -114,8 +114,6 @@ export default function NewPage() {
       <Navbar />
 
       <main className="p-8">
-
-        {/* ⭐ Updated responsive heading */}
         <h1
           className="
             flex items-center gap-3 mb-10

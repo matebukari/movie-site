@@ -1,5 +1,3 @@
-// src/utils/getPlatformLogo.js
-
 const LOGO_MAP = {
   netflix: "netflix",
   "disney+": "disneyplus",
@@ -37,9 +35,10 @@ const LOGO_MAP = {
 };
 
 /**
- * Returns the URL to a platform logo from /public/logos/
- * Returns null if no known logo exists.
- */
+  Returns a platform logo from /public/logos/
+  Returns null if no known logo exists.
+*/
+
 export function getPlatformLogo(name) {
   if (!name) return null;
 
@@ -51,7 +50,6 @@ export function getPlatformLogo(name) {
     .replace(/[\-_.]/g, " ")
     .replace(/\s+/g, " ");
 
-  // Handle known Apple TV variants explicitly
   if (
     normalized.includes("apple tv") ||
     normalized.includes("appletv") ||
@@ -71,8 +69,8 @@ export function getPlatformLogo(name) {
 }
 
 /**
- * Normalizes platform names and removes duplicates.
- */
+  Normalizes platform names and removes duplicates.
+*/
 export function normalizePlatforms(list = []) {
   const seen = new Set();
   return list

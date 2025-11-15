@@ -47,7 +47,7 @@ function ShowModal({ show, country, onClose }) {
 
   const genres = details?.genres?.length ? details.genres.join(", ") : "Unknown";
 
-  // Runtime display (cleaned)
+  // Runtime display
   let runtime = null;
   const invalidValues = ["n/a", "na", "none", "-", ""];
 

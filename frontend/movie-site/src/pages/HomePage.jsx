@@ -6,14 +6,10 @@ import { useCountry } from "../context/CountryContext";
 
 import useCachedShows from "../hooks/useCachedShows";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
-import { fetchShowsGeneric } from "../hooks/useFetchShows";
+import {fetchShowsGeneric} from "../hooks/useFetchShows";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const PAGE_LIMIT = 20;
-
-// Clean dedupe helper
-const dedupeById = (arr) =>
-  Array.from(new Map(arr.map((s) => [s.id, s])).values());
 
 export default function HomePage() {
   const { country, countryDetected } = useCountry();
@@ -27,13 +23,11 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  /* -----------------------------------------------------------
-   * Load Cache on Country Switch
-   * --------------------------------------------------------- */
+  // Load cache on country switch
   useEffect(() => {
     const cache = getCache();
     if (cache) {
-      setShows(dedupeById(cache.results));
+      setShows(cache.results);
       setPage(cache.nextPage ?? 6);
       setHasMore(cache.hasMore ?? true);
     } else {
@@ -43,45 +37,43 @@ export default function HomePage() {
     }
   }, [country]);
 
-  /* -----------------------------------------------------------
-   * Fetch Function (Search + Country Default)
-   * --------------------------------------------------------- */
-  const fetchShows = useCallback(async (reset = false) => {
-    if (loading || !countryDetected) return;
+  // Fetch shows
+  const fetchShows = useCallback(
+    async (reset = false) => {
+      if (loading || !countryDetected) return;
 
-    setLoading(true);
-    setError("");
+      setLoading(true);
+      setError("");
 
-    const currentPage = reset ? 1 : page;
+      const currentPage = reset ? 1 : page;
 
-    const endpoint = searchQuery.trim()
-      ? `${API_BASE}/titles/search?query=${encodeURIComponent(
-          searchQuery
-        )}&country=${country}&page=${currentPage}`
-      : `${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
+      const endpoint = searchQuery.trim()
+        ? `${API_BASE}/titles/search?query=${encodeURIComponent(
+            searchQuery
+          )}&country=${country}&page=${currentPage}`
+        : `${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
-    try {
-      const { results, hasMore: more } = await fetchShowsGeneric(
-        endpoint,
-        reset ? [] : shows
-      );
+      try {
+        const { results, hasMore: more } = await fetchShowsGeneric(
+          endpoint,
+          reset ? [] : shows
+        );
 
-      const unique = dedupeById(results);
+        setShows(results);
+        setHasMore(more);
+        setCache(results, currentPage + 1, more);
+        setPage(currentPage + 1);
 
-      setShows(unique);
-      setHasMore(more);
-      setCache(unique, currentPage + 1, more);
-      setPage(currentPage + 1);
-    } catch {
-      setError("Error fetching shows");
-    } finally {
-      setLoading(false);
-    }
-  }, [country, countryDetected, page, searchQuery, shows, loading]);
+      } catch {
+        setError("Error fetching shows");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [country, countryDetected, page, searchQuery, shows, loading]
+  );
 
-  /* -----------------------------------------------------------
-   * Initial Preload (5 pages only on first load)
-   * --------------------------------------------------------- */
+  // Initial preload (5 pages)
   useEffect(() => {
     if (!countryDetected || !country) return;
     if (getCache()) return;
@@ -101,12 +93,12 @@ export default function HomePage() {
           })
         );
 
-        const combined = dedupeById(results.flat());
-
-        setShows(combined);
+        const flattened = results.flat();
+        setShows(flattened);
         setPage(6);
-        setHasMore(combined.length > 0);
-        setCache(combined, 6, combined.length > 0);
+        setHasMore(flattened.length > 0);
+        setCache(flattened, 6, flattened.length > 0);
+
       } catch {
         setError("Failed to load shows");
       } finally {
@@ -117,35 +109,24 @@ export default function HomePage() {
     preload();
   }, [countryDetected, country]);
 
-  /* -----------------------------------------------------------
-   * Infinite Scroll
-   * --------------------------------------------------------- */
+  // Infinite scroll
   useInfiniteScroll(() => {
     if (hasMore && !loading) fetchShows();
   }, [hasMore, loading, country]);
 
-  /* -----------------------------------------------------------
-   * Modal Fetch
-   * --------------------------------------------------------- */
+  // Modal fetch
   const handleShowClick = async (show) => {
     try {
       const res = await fetch(
         `${API_BASE}/titles/${show.id}/sources?country=${country}`
       );
       const data = await res.json();
-
-      setSelectedShow({
-        ...show,
-        platforms: data.platforms || [],
-      });
+      setSelectedShow({ ...show, platforms: data.platforms || [] });
     } catch {
       console.error("Error fetching show details");
     }
   };
 
-  /* -----------------------------------------------------------
-   * Country still detecting
-   * --------------------------------------------------------- */
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -154,9 +135,6 @@ export default function HomePage() {
     );
   }
 
-  /* -----------------------------------------------------------
-   * Render
-   * --------------------------------------------------------- */
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
