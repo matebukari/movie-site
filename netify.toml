@@ -1,0 +1,7 @@
+[build]
+  base = "frontend/movie-site"
+  publish = "frontend/movie-site/dist"
+  command = "npm run build"
+
+[functions]
+  directory = ""
