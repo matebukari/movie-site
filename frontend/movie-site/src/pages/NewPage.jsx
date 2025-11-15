@@ -10,6 +10,11 @@ import { fetchShowsGeneric } from "../hooks/useFetchShows";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const PAGE_LIMIT = 20;
+const MAX_SHOWS = 102;
+
+// Deduper
+const dedupe = (arr) =>
+  Array.from(new Map(arr.map((s) => [s.id, s])).values());
 
 export default function NewPage() {
   const { country, countryDetected } = useCountry();
@@ -22,34 +27,53 @@ export default function NewPage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
+  // Load from cache
   useEffect(() => {
     const cache = getCache();
     if (cache) {
       setShows(cache.results);
-      setPage(cache.nextPage ?? 6);
+      setPage(cache.nextPage ?? 2);
       setHasMore(cache.hasMore ?? true);
+    } else {
+      setShows([]);
+      setPage(1);
+      setHasMore(true);
     }
   }, [country]);
 
+  // Fetch new releases page-by-page
   const fetchNewTitles = useCallback(
-    async (reset = false, customPage = null) => {
+    async (reset = false) => {
       if (loading || !countryDetected) return;
+
+      if (!reset && shows.length >= MAX_SHOWS) {
+        setHasMore(false);
+        return;
+      }
 
       setLoading(true);
       setError("");
 
-      const currentPage = customPage || (reset ? 1 : page);
+      const currentPage = reset ? 1 : page;
       const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
       try {
-        const { results, hasMore: more } = await fetchShowsGeneric(
-          endpoint,
-          reset ? [] : shows
-        );
-        setShows(results);
-        setHasMore(more);
-        setCache(results, currentPage + 1, more);
-        setPage((p) => p + 1);
+        const { results: newResults, hasMore: apiHasMore } =
+          await fetchShowsGeneric(endpoint, reset ? [] : shows);
+
+        let merged = reset ? newResults : dedupe([...shows, ...newResults]);
+
+        if (merged.length >= MAX_SHOWS) {
+          merged = merged.slice(0, MAX_SHOWS);
+          setHasMore(false);
+        } else {
+          setHasMore(apiHasMore);
+        }
+
+        setShows(merged);
+        setCache(merged, currentPage + 1, apiHasMore);
+
+        setPage(currentPage + 1);
       } catch (err) {
         console.error("Error fetching new releases:", err);
         setError("Error fetching new releases");
@@ -60,46 +84,42 @@ export default function NewPage() {
     [country, countryDetected, page, shows, loading]
   );
 
+  // Initial load (only page 1)
   useEffect(() => {
-    if (!countryDetected || !country) return;
-    if (getCache()) return;
+    if (!countryDetected || getCache()) return;
 
-    const loadInitial = async () => {
+    const preload = async () => {
       setLoading(true);
       setError("");
-      setShows([]);
-      setPage(1);
-      setHasMore(true);
 
       try {
-        const pages = [1, 2, 3, 4, 5];
-        const allResults = await Promise.all(
-          pages.map(async (p) => {
-            const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${p}`;
-            const { results } = await fetchShowsGeneric(endpoint);
-            return results;
-          })
-        );
+        const url = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=1`;
+        const { results } = await fetchShowsGeneric(url);
 
-        const combined = allResults.flat();
-        setShows(combined);
-        setPage(6);
-        setHasMore(combined.length > 0);
-        setCache(combined, 6, combined.length > 0);
+        const capped = results.slice(0, MAX_SHOWS);
+
+        setShows(capped);
+        setPage(2);
+        setHasMore(capped.length < MAX_SHOWS);
+
+        setCache(capped, 2, capped.length < MAX_SHOWS);
       } catch (err) {
-        console.error("Failed to preload new releases:", err);
+        console.error("Failed to load new releases:", err);
         setError("Failed to load new releases");
       } finally {
         setLoading(false);
       }
     };
 
-    loadInitial();
+    preload();
   }, [countryDetected, country]);
 
+  // Infinite scroll
   useInfiniteScroll(() => {
-    if (!loading && hasMore) fetchNewTitles();
-  }, [loading, hasMore, country]);
+    if (!loading && hasMore && shows.length < MAX_SHOWS) {
+      fetchNewTitles();
+    }
+  }, [loading, hasMore, shows.length]);
 
   if (!countryDetected && shows.length === 0) {
     return (

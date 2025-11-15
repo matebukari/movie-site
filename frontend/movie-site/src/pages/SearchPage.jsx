@@ -34,7 +34,9 @@ export default function SearchPage() {
     const fetchSearchResults = async () => {
       try {
         const res = await fetch(
-          `${API_BASE}/titles/search?query=${encodeURIComponent(searchQuery)}&country=${country}`
+          `${API_BASE}/titles/search?query=${encodeURIComponent(
+            searchQuery
+          )}&country=${country}`
         );
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Failed to fetch search results");
@@ -64,9 +66,27 @@ export default function SearchPage() {
       />
 
       <main className="p-8">
+        {/* Header Styled Like Popular/New */}
         {searchQuery && (
-          <h1 className="text-3xl font-semibold text-blue-400 mb-6 text-center">
-            Search results for: <span className="text-white">{searchQuery}</span>
+          <h1
+            className="
+              flex items-center gap-3 mb-10
+              text-3xl font-bold
+              justify-center md:justify-start
+              text-center md:text-left
+            "
+          >
+            <span className="text-red-400 tracking-wide drop-shadow-[0_0_10px_#ef4444]">
+              Results for
+            </span>
+
+            <span className="text-white">“{searchQuery}”</span>
+
+            <img
+              src={`https://flagcdn.com/w40/${country?.toLowerCase()}.png`}
+              alt={country}
+              className="h-6 w-8 object-cover rounded-md border border-gray-700"
+            />
           </h1>
         )}
 

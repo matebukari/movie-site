@@ -10,6 +10,11 @@ import { fetchShowsGeneric } from "../hooks/useFetchShows";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const PAGE_LIMIT = 20;
+const MAX_SHOWS = 102;
+
+// Deduper
+const dedupe = (arr) =>
+  Array.from(new Map(arr.map((s) => [s.id, s])).values());
 
 export default function PopularPage() {
   const { country, countryDetected } = useCountry();
@@ -22,35 +27,54 @@ export default function PopularPage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  // Load from cache
+  // Load from cache on country switch
   useEffect(() => {
     const cache = getCache();
     if (cache) {
       setShows(cache.results);
-      setPage(cache.nextPage ?? 6);
+      setPage(cache.nextPage ?? 2);
       setHasMore(cache.hasMore ?? true);
+    } else {
+      setShows([]);
+      setPage(1);
+      setHasMore(true);
     }
   }, [country]);
 
-  // Fetch popular shows
+  // Fetch next page
   const fetchPopular = useCallback(
-    async (reset = false, customPage = null) => {
+    async (reset = false) => {
       if (loading || !countryDetected) return;
+
+      if (!reset && shows.length >= MAX_SHOWS) {
+        setHasMore(false);
+        return;
+      }
 
       setLoading(true);
       setError("");
 
-      const currentPage = customPage || (reset ? 1 : page);
+      const currentPage = reset ? 1 : page;
       const endpoint = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
       try {
-        const { results, hasMore: more } = await fetchShowsGeneric(endpoint, reset ? [] : shows);
-        setShows(results);
-        setHasMore(more);
-        setCache(results, currentPage + 1, more);
-        setPage((p) => p + 1);
-      } catch (err) {
-        console.error("❌ Error fetching popular shows:", err);
+        const { results: newResults, hasMore: apiHasMore } =
+          await fetchShowsGeneric(endpoint, reset ? [] : shows);
+
+        let merged = reset ? newResults : dedupe([...shows, ...newResults]);
+
+        if (merged.length >= MAX_SHOWS) {
+          merged = merged.slice(0, MAX_SHOWS);
+          setHasMore(false);
+        } else {
+          setHasMore(apiHasMore);
+        }
+
+        setShows(merged);
+        setCache(merged, currentPage + 1, apiHasMore);
+
+        setPage(currentPage + 1);
+      } catch {
         setError("Error fetching popular shows");
       } finally {
         setLoading(false);
@@ -59,50 +83,55 @@ export default function PopularPage() {
     [country, countryDetected, page, shows, loading]
   );
 
-  // Initial preload
+  // Initial load (only page 1)
   useEffect(() => {
-    if (!countryDetected || !country) return;
+    if (!countryDetected) return;
     if (getCache()) return;
 
-    const loadInitial = async () => {
+    const preload = async () => {
       setLoading(true);
-      setError("");
-      setShows([]);
 
       try {
-        const pages = [1, 2, 3, 4, 5];
-        const allResults = await Promise.all(
-          pages.map(async (p) => {
-            const endpoint = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=${p}`;
-            const { results } = await fetchShowsGeneric(endpoint);
-            return results;
-          })
-        );
+        const url = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=1`;
+        const { results } = await fetchShowsGeneric(url);
 
-        const combined = allResults.flat();
-        setShows(combined);
-        setPage(6);
-        setHasMore(combined.length > 0);
-        setCache(combined, 6, combined.length > 0);
-      } catch (err) {
+        const capped = results.slice(0, MAX_SHOWS);
+
+        setShows(capped);
+        setPage(2);
+        setHasMore(capped.length < MAX_SHOWS);
+
+        setCache(capped, 2, capped.length < MAX_SHOWS);
+      } catch {
         setError("Failed to load popular shows");
       } finally {
         setLoading(false);
       }
     };
 
-    loadInitial();
+    preload();
   }, [countryDetected, country]);
 
-  // Infinite Scroll
+  // Infinite scroll
   useInfiniteScroll(() => {
-    if (!loading && hasMore) fetchPopular();
-  }, [loading, hasMore, country]);
+    if (!loading && hasMore && shows.length < MAX_SHOWS) {
+      fetchPopular();
+    }
+  }, [loading, hasMore, shows.length]);
 
   // Modal
-  const handleShowClick = (show) => setSelectedShow(show);
+  const handleShowClick = async (show) => {
+    try {
+      const res = await fetch(
+        `${API_BASE}/titles/${show.id}/sources?country=${country}`
+      );
+      const data = await res.json();
+      setSelectedShow({ ...show, platforms: data.platforms || [] });
+    } catch {
+      console.error("Error fetching show details");
+    }
+  };
 
-  // Render
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -114,11 +143,13 @@ export default function PopularPage() {
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar />
+
       <main className="p-8">
-        <h1 className="
+        <h1
+          className="
             flex items-center gap-3 mb-10
             text-3xl font-bold
-            justify-center md:justify-start   /* Center on mobile → left on desktop */
+            justify-center md:justify-start
             text-center md:text-left"
         >
           <span className="text-red-400 tracking-wide drop-shadow-[0_0_10px_#ef4444]">

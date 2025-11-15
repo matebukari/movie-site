@@ -7,30 +7,30 @@ export async function fetchShowsGeneric(endpoint, prevShows = []) {
 
   const incoming = data.results || [];
 
-  // Create a map from prevShows
+  // Dedup using Map
   const map = new Map();
   for (const show of prevShows) {
     if (show?.id) map.set(show.id, show);
   }
 
-  // Merge new results, replacing if more complete
+  const completeness = (obj) =>
+    Object.values(obj || {}).filter((v) => v !== null && v !== undefined).length;
+
   for (const show of incoming) {
     if (!show?.id) continue;
-    const existing = map.get(show.id);
 
-    const completeness = (obj) =>
-      Object.values(obj || {}).filter((v) => v !== null && v !== undefined).length;
+    const existing = map.get(show.id);
 
     if (!existing || completeness(show) > completeness(existing)) {
       map.set(show.id, show);
     }
   }
 
-  // Convert back to array — deduped before returning
-  const results = [...map.values()].slice(0, MAX_SHOWS);
+  // Convert to REAL array
+  const results = Array.from(map.values());
 
-  // Determine if the API still has more pages
-  const hasMore = results.length < MAX_SHOWS && incoming.length > 0;
+  // API has more pages if it returned *any* results
+  const hasMore = incoming.length > 0;
 
   return { results, hasMore };
 }
