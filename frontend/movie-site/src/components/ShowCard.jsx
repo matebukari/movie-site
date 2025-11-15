@@ -44,7 +44,6 @@ export default function ShowCard({ show, onClick }) {
 
     setHovered(false);
 
-    // Reset trailer elements
     if (videoRef.current) {
       videoRef.current.pause();
       videoRef.current.currentTime = 0;
@@ -84,7 +83,9 @@ export default function ShowCard({ show, onClick }) {
           src={imageSrc || "/placeholder-poster.jpg"}
           alt={show.title}
           effect="blur"
-          className="w-full h-64 md:h-80 object-cover"
+          className={`w-full object-cover ${
+            isMobile ? "aspect-3/4" : "h-80"
+          }`}
         />
       </div>
 
@@ -118,12 +119,15 @@ export default function ShowCard({ show, onClick }) {
       )}
 
       {/* Info overlay */}
-      <div className={`absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent 
+      <div
+        className={`absolute bottom-0 left-0 right-0 bg-linear-to-t from-black/80 to-transparent 
                     p-4 transition-opacity duration-500 ${
                       hovered ? "opacity-0" : "opacity-100"
                     }`}
       >
-        <h2 className="text-lg font-semibold text-white truncate">{show.title}</h2>
+        <h2 className="text-lg font-semibold text-white truncate">
+          {show.title}
+        </h2>
         <p className="text-sm text-gray-300">
           {show.year && `(${show.year})`} {show.year && show.type && " • "}{" "}
           {show.type || ""}

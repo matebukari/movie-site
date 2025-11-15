@@ -10,32 +10,21 @@ function ShowModal({ show, country, onClose }) {
 
   const API_BASE = import.meta.env.VITE_API_URL;
 
-  // Close modal with ESC
   useEffect(() => {
     const handleKey = (e) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
-  // Fetch platform availability
   useEffect(() => {
     const fetchPlatforms = async () => {
       try {
         setLoading(true);
         const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
         const data = await res.json();
-
-        console.log(
-          "Platforms fetched for:",
-          show?.title || show?.name,
-          "→",
-          data.platforms || []
-        );
-
         setPlatforms(data.platforms || []);
         setDetails(show);
-      } catch (err) {
-        console.error("Failed to fetch show platforms:", err);
+      } catch {
         setDetails(show);
       } finally {
         setLoading(false);
@@ -47,10 +36,8 @@ function ShowModal({ show, country, onClose }) {
 
   const genres = details?.genres?.length ? details.genres.join(", ") : "Unknown";
 
-  // Runtime display
   let runtime = null;
   const invalidValues = ["n/a", "na", "none", "-", ""];
-
   if (details?.runtimeText && !invalidValues.includes(details.runtimeText.trim().toLowerCase())) {
     runtime =
       details.type?.toLowerCase().includes("tv")
@@ -73,32 +60,32 @@ function ShowModal({ show, country, onClose }) {
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         >
+          {/* Close button ALWAYS visible */}
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="fixed top-6 right-6 z-9999
+                       bg-black/70 hover:bg-black/90
+                       text-white hover:text-red-400
+                       p-3 rounded-full cursor-pointer
+                       transition-all duration-200
+                       border border-white/20 shadow-lg"
+            style={{
+              backdropFilter: "blur(6px)",
+              WebkitBackdropFilter: "blur(6px)",
+            }}
+          >
+            <X size={24} strokeWidth={2.8} />
+          </button>
+
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 40 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 40 }}
             transition={{ duration: 0.25, ease: "easeOut" }}
-            className="relative bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden"
+            className="relative bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full 
+                       max-h-[90vh] overflow-y-auto"
           >
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              aria-label="Close"
-              className="absolute top-4 right-4 z-50
-                         bg-black/70 hover:bg-black/90
-                         text-white hover:text-red-400
-                         p-3 rounded-full cursor-pointer
-                         transition-all duration-200
-                         border border-white/20 shadow-lg"
-              style={{
-                backdropFilter: "blur(6px)",
-                WebkitBackdropFilter: "blur(6px)",
-              }}
-            >
-              <X size={24} strokeWidth={2.8} />
-            </button>
-
-            {/* Banner */}
             <div className="relative">
               <img
                 src={details?.backdrop || details?.poster || "/placeholder-poster.jpg"}
@@ -117,18 +104,15 @@ function ShowModal({ show, country, onClose }) {
               </div>
             </div>
 
-            {/* Info Section */}
             <div className="p-6 space-y-5">
               {loading ? (
                 <p className="text-gray-400 italic">Loading details...</p>
               ) : (
                 <>
-                  {/* Overview */}
                   <p className="text-gray-200 text-base leading-relaxed">
                     {details?.overview || "No description available."}
                   </p>
 
-                  {/* Metadata Badges */}
                   <div className="flex flex-wrap gap-3 text-sm">
                     <span className="bg-gray-800 px-3 py-1 rounded-full text-gray-300">
                       ⭐ {details?.rating ? details.rating.toFixed(1) : "N/A"}
@@ -146,7 +130,6 @@ function ShowModal({ show, country, onClose }) {
                     </span>
                   </div>
 
-                  {/* Trailer Button */}
                   {details?.trailer && (
                     <motion.a
                       href={details.trailer}
@@ -161,7 +144,6 @@ function ShowModal({ show, country, onClose }) {
                     </motion.a>
                   )}
 
-                  {/* Streaming Platforms */}
                   {platforms.length > 0 ? (
                     <div>
                       <h3 className="text-lg font-semibold text-white mb-3">
@@ -208,12 +190,8 @@ function ShowModal({ show, country, onClose }) {
                                 />
                               )}
 
-                              {/* Tooltip */}
                               <div
-                                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2
-                                           bg-black text-white text-xs font-medium px-2 py-1 rounded
-                                           opacity-0 group-hover:opacity-100 transition-opacity
-                                           whitespace-nowrap pointer-events-none z-20"
+                                className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-black text-white text-xs font-medium px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20"
                               >
                                 {p}
                               </div>
