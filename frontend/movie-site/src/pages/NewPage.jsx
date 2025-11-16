@@ -6,19 +6,21 @@ import { useCountry } from "../context/CountryContext";
 
 import useCachedShows from "../hooks/useCachedShows";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import useScrollLockDuringFetch from "../hooks/useScrollLockDuringFetch";
 import { fetchShowsGeneric } from "../hooks/useFetchShows";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const PAGE_LIMIT = 20;
 const MAX_SHOWS = 102;
 
-// Deduper
 const dedupe = (arr) =>
   Array.from(new Map(arr.map((s) => [s.id, s])).values());
 
 export default function NewPage() {
   const { country, countryDetected } = useCountry();
   const { getCache, setCache } = useCachedShows("new", country);
+
+  const { runLocked } = useScrollLockDuringFetch();
 
   const [shows, setShows] = useState([]);
   const [page, setPage] = useState(1);
@@ -27,7 +29,7 @@ export default function NewPage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  // Load from cache
+  // Load cache on navigation or country change
   useEffect(() => {
     const cache = getCache();
     if (cache) {
@@ -41,11 +43,12 @@ export default function NewPage() {
     }
   }, [country]);
 
-  // Fetch new releases page-by-page
+  // Fetch one page of new releases
   const fetchNewTitles = useCallback(
     async (reset = false) => {
-      if (loading || !countryDetected) return;
+      if (!countryDetected || loading) return;
 
+      // stop at 102 shows
       if (!reset && shows.length >= MAX_SHOWS) {
         setHasMore(false);
         return;
@@ -55,23 +58,27 @@ export default function NewPage() {
       setError("");
 
       const currentPage = reset ? 1 : page;
+
       const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
       try {
-        const { results: newResults, hasMore: apiHasMore } =
-          await fetchShowsGeneric(endpoint, reset ? [] : shows);
+        const { results: fresh, hasMore: apiMore } = await fetchShowsGeneric(
+          endpoint,
+          reset ? [] : shows
+        );
 
-        let merged = reset ? newResults : dedupe([...shows, ...newResults]);
+        let merged = reset ? fresh : dedupe([...shows, ...fresh]);
 
+        // Hard cap at 102
         if (merged.length >= MAX_SHOWS) {
           merged = merged.slice(0, MAX_SHOWS);
           setHasMore(false);
         } else {
-          setHasMore(apiHasMore);
+          setHasMore(apiMore);
         }
 
         setShows(merged);
-        setCache(merged, currentPage + 1, apiHasMore);
+        setCache(merged, currentPage + 1, apiMore);
 
         setPage(currentPage + 1);
       } catch (err) {
@@ -84,13 +91,13 @@ export default function NewPage() {
     [country, countryDetected, page, shows, loading]
   );
 
-  // Initial load (only page 1)
+  // Initial load (page 1 only)
   useEffect(() => {
-    if (!countryDetected || getCache()) return;
+    if (!countryDetected) return;
+    if (getCache()) return;
 
-    const preload = async () => {
+    const loadFirstPage = async () => {
       setLoading(true);
-      setError("");
 
       try {
         const url = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=1`;
@@ -111,13 +118,13 @@ export default function NewPage() {
       }
     };
 
-    preload();
+    loadFirstPage();
   }, [countryDetected, country]);
 
-  // Infinite scroll
+  // Smooth mobile-safe infinite scroll
   useInfiniteScroll(() => {
     if (!loading && hasMore && shows.length < MAX_SHOWS) {
-      fetchNewTitles();
+      runLocked(() => fetchNewTitles());
     }
   }, [loading, hasMore, shows.length]);
 

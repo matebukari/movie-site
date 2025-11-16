@@ -6,19 +6,21 @@ import { useCountry } from "../context/CountryContext";
 
 import useCachedShows from "../hooks/useCachedShows";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import useScrollLockDuringFetch from "../hooks/useScrollLockDuringFetch";
 import { fetchShowsGeneric } from "../hooks/useFetchShows";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const PAGE_LIMIT = 20;
 const MAX_SHOWS = 102;
 
-// Deduper
 const dedupe = (arr) =>
   Array.from(new Map(arr.map((s) => [s.id, s])).values());
 
 export default function PopularPage() {
   const { country, countryDetected } = useCountry();
   const { getCache, setCache } = useCachedShows("popular", country);
+
+  const { runLocked } = useScrollLockDuringFetch();
 
   const [shows, setShows] = useState([]);
   const [page, setPage] = useState(1);
@@ -27,7 +29,7 @@ export default function PopularPage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  // Load from cache on country switch
+  // Load cache on country change
   useEffect(() => {
     const cache = getCache();
     if (cache) {
@@ -44,7 +46,7 @@ export default function PopularPage() {
   // Fetch next page
   const fetchPopular = useCallback(
     async (reset = false) => {
-      if (loading || !countryDetected) return;
+      if (!countryDetected || loading) return;
 
       if (!reset && shows.length >= MAX_SHOWS) {
         setHasMore(false);
@@ -55,27 +57,30 @@ export default function PopularPage() {
       setError("");
 
       const currentPage = reset ? 1 : page;
+
       const endpoint = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
 
       try {
-        const { results: newResults, hasMore: apiHasMore } =
+        const { results: newResults, hasMore: apiMore } =
           await fetchShowsGeneric(endpoint, reset ? [] : shows);
 
         let merged = reset ? newResults : dedupe([...shows, ...newResults]);
 
+        // Cap at 102
         if (merged.length >= MAX_SHOWS) {
           merged = merged.slice(0, MAX_SHOWS);
           setHasMore(false);
         } else {
-          setHasMore(apiHasMore);
+          setHasMore(apiMore);
         }
 
         setShows(merged);
-        setCache(merged, currentPage + 1, apiHasMore);
+        setCache(merged, currentPage + 1, apiMore);
 
         setPage(currentPage + 1);
-      } catch {
-        setError("Error fetching popular shows");
+      } catch (err) {
+        console.error("Error fetching popular:", err);
+        setError("Error loading popular shows");
       } finally {
         setLoading(false);
       }
@@ -83,12 +88,11 @@ export default function PopularPage() {
     [country, countryDetected, page, shows, loading]
   );
 
-  // Initial load (only page 1)
+  // Initial load – only page 1
   useEffect(() => {
-    if (!countryDetected) return;
-    if (getCache()) return;
+    if (!countryDetected || getCache()) return;
 
-    const preload = async () => {
+    const loadFirstPage = async () => {
       setLoading(true);
 
       try {
@@ -109,17 +113,17 @@ export default function PopularPage() {
       }
     };
 
-    preload();
+    loadFirstPage();
   }, [countryDetected, country]);
 
-  // Infinite scroll
+  // Infinite Scroll (debounced + lock)
   useInfiniteScroll(() => {
     if (!loading && hasMore && shows.length < MAX_SHOWS) {
-      fetchPopular();
+      runLocked(() => fetchPopular());
     }
   }, [loading, hasMore, shows.length]);
 
-  // Modal
+  // Fetch details for modal
   const handleShowClick = async (show) => {
     try {
       const res = await fetch(

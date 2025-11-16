@@ -6,13 +6,13 @@ import { useCountry } from "../context/CountryContext";
 
 import useCachedShows from "../hooks/useCachedShows";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
+import useScrollLockDuringFetch from "../hooks/useScrollLockDuringFetch";
 import { fetchShowsGeneric } from "../hooks/useFetchShows";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 const PAGE_LIMIT = 20;
 const MAX_SHOWS = 102;
 
-// Deduper
 const dedupe = (arr) =>
   Array.from(new Map(arr.map((s) => [s.id, s])).values());
 
@@ -28,7 +28,8 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  // Load cache on country change
+  const { runLocked } = useScrollLockDuringFetch();
+
   useEffect(() => {
     const cache = getCache();
     if (cache) {
@@ -42,56 +43,66 @@ export default function HomePage() {
     }
   }, [country]);
 
-  // Fetch next page of shows
   const fetchShows = useCallback(
     async (reset = false) => {
-      if (loading || !countryDetected) return;
+      if (!countryDetected) return;
 
-      // STOP if at limit
-      if (!reset && shows.length >= MAX_SHOWS) {
-        setHasMore(false);
-        return;
-      }
+      runLocked(async () => {
+        if (loading) return;
 
-      setLoading(true);
-      setError("");
-
-      const currentPage = reset ? 1 : page;
-
-      const endpoint = searchQuery.trim()
-        ? `${API_BASE}/titles/search?query=${encodeURIComponent(
-            searchQuery
-          )}&country=${country}&page=${currentPage}`
-        : `${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
-
-      try {
-        const { results: newResults, hasMore: apiHasMore } =
-          await fetchShowsGeneric(endpoint, reset ? [] : shows);
-
-        let merged = reset ? newResults : dedupe([...shows, ...newResults]);
-
-        // HARD CAP
-        if (merged.length >= MAX_SHOWS) {
-          merged = merged.slice(0, MAX_SHOWS);
+        if (!reset && shows.length >= MAX_SHOWS) {
           setHasMore(false);
-        } else {
-          setHasMore(apiHasMore);
+          return;
         }
 
-        setShows(merged);
-        setCache(merged, currentPage + 1, hasMore);
+        setLoading(true);
+        setError("");
 
-        setPage(currentPage + 1);
-      } catch {
-        setError("Error fetching shows");
-      } finally {
-        setLoading(false);
-      }
+        const currentPage = reset ? 1 : page;
+
+        const endpoint = searchQuery.trim()
+          ? `${API_BASE}/titles/search?query=${encodeURIComponent(
+              searchQuery
+            )}&country=${country}&page=${currentPage}`
+          : `${API_BASE}/titles/by-country?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
+
+        try {
+          const { results: newResults } = await fetchShowsGeneric(
+            endpoint,
+            reset ? [] : shows
+          );
+
+          if (newResults.length === 0) {
+            setHasMore(false);
+            setLoading(false);
+            return;
+          }
+
+          let merged = reset
+            ? newResults
+            : dedupe([...shows, ...newResults]);
+
+          if (merged.length >= MAX_SHOWS) {
+            merged = merged.slice(0, MAX_SHOWS);
+            setHasMore(false);
+          } else {
+            setHasMore(true);
+          }
+
+          setShows(merged);
+          setCache(merged, currentPage + 1, true);
+
+          setPage(currentPage + 1);
+        } catch {
+          setError("Error fetching shows");
+        } finally {
+          setLoading(false);
+        }
+      });
     },
     [country, countryDetected, page, searchQuery, shows, loading]
   );
 
-  // Initial load (only page 1)
   useEffect(() => {
     if (!countryDetected) return;
     if (getCache()) return;
@@ -120,14 +131,12 @@ export default function HomePage() {
     preload();
   }, [countryDetected, country]);
 
-  // Infinite scroll
   useInfiniteScroll(() => {
     if (!loading && hasMore && shows.length < MAX_SHOWS) {
       fetchShows();
     }
   }, [loading, hasMore, shows.length, country]);
 
-  // Modal fetch
   const handleShowClick = async (show) => {
     try {
       const res = await fetch(
