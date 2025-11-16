@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { X, Globe2, PlayCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getPlatformLogo } from "../utils/getPlatformLogo";
+import ModalSkeleton from "./ModalSkeleton";
 
 function ShowModal({ show, country, onClose }) {
   const [details, setDetails] = useState(null);
@@ -60,7 +61,6 @@ function ShowModal({ show, country, onClose }) {
           exit={{ opacity: 0 }}
           className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4"
         >
-          {/* Close button ALWAYS visible */}
           <button
             onClick={onClose}
             aria-label="Close"
@@ -79,10 +79,10 @@ function ShowModal({ show, country, onClose }) {
           </button>
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 40 }}
+            initial={{ opacity: 0, scale: 0.97, y: 12 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 40 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
+            exit={{ opacity: 0, scale: 0.97, y: 12 }}
+            transition={{ duration: 0.14, ease: "easeOut" }}
             className="relative bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full 
                        max-h-[90vh] overflow-y-auto"
           >
@@ -106,7 +106,7 @@ function ShowModal({ show, country, onClose }) {
 
             <div className="p-6 space-y-5">
               {loading ? (
-                <p className="text-gray-400 italic">Loading details...</p>
+                <ModalSkeleton/>
               ) : (
                 <>
                   <p className="text-gray-200 text-base leading-relaxed">
