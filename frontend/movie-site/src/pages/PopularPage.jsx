@@ -10,8 +10,13 @@ import useScrollLockDuringFetch from "../hooks/useScrollLockDuringFetch";
 import { fetchShowsGeneric } from "../hooks/useFetchShows";
 
 const API_BASE = import.meta.env.VITE_API_URL;
-const PAGE_LIMIT = 20;
+
+// ⭐ Fetch exactly 9 shows per page (matches screen grid)
+const PAGE_LIMIT = 9;
 const MAX_SHOWS = 102;
+
+// ⭐ Lightweight fields for grid cards
+const FAST_FIELDS = "id,title,poster,backdrop,year,type";
 
 const dedupe = (arr) =>
   Array.from(new Map(arr.map((s) => [s.id, s])).values());
@@ -29,9 +34,12 @@ export default function PopularPage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  // Load cache on country change
+  /* ---------------------------------------------------
+    1️⃣ Load from cache if available
+  -----------------------------------------------------*/
   useEffect(() => {
     const cache = getCache();
+
     if (cache) {
       setShows(cache.results);
       setPage(cache.nextPage ?? 2);
@@ -43,7 +51,9 @@ export default function PopularPage() {
     }
   }, [country]);
 
-  // Fetch next page
+  /* ---------------------------------------------------
+    2️⃣ Fast-lane fetch: minimal card data
+  -----------------------------------------------------*/
   const fetchPopular = useCallback(
     async (reset = false) => {
       if (!countryDetected || loading) return;
@@ -58,24 +68,28 @@ export default function PopularPage() {
 
       const currentPage = reset ? 1 : page;
 
-      const endpoint = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
+      const endpoint = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}&fields=${FAST_FIELDS}`;
 
       try {
-        const { results: newResults, hasMore: apiMore } =
-          await fetchShowsGeneric(endpoint, reset ? [] : shows);
+        const { results: newResults } = await fetchShowsGeneric(
+          endpoint,
+          reset ? [] : shows
+        );
+
+        if (!newResults.length) {
+          setHasMore(false);
+          return;
+        }
 
         let merged = reset ? newResults : dedupe([...shows, ...newResults]);
 
-        // Cap at 102
         if (merged.length >= MAX_SHOWS) {
           merged = merged.slice(0, MAX_SHOWS);
           setHasMore(false);
-        } else {
-          setHasMore(apiMore);
         }
 
         setShows(merged);
-        setCache(merged, currentPage + 1, apiMore);
+        setCache(merged, currentPage + 1, true);
 
         setPage(currentPage + 1);
       } catch (err) {
@@ -88,54 +102,78 @@ export default function PopularPage() {
     [country, countryDetected, page, shows, loading]
   );
 
-  // Initial load – only page 1
+  /* ---------------------------------------------------
+    3️⃣ Initial fast-lane fetch
+  -----------------------------------------------------*/
   useEffect(() => {
-    if (!countryDetected || getCache()) return;
+    if (!countryDetected) return;
+    if (getCache()) return;
 
-    const loadFirstPage = async () => {
-      setLoading(true);
-
-      try {
-        const url = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=1`;
-        const { results } = await fetchShowsGeneric(url);
-
-        const capped = results.slice(0, MAX_SHOWS);
-
-        setShows(capped);
-        setPage(2);
-        setHasMore(capped.length < MAX_SHOWS);
-
-        setCache(capped, 2, capped.length < MAX_SHOWS);
-      } catch {
-        setError("Failed to load popular shows");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadFirstPage();
+    fetchPopular(true); // reset = true → page 1
   }, [countryDetected, country]);
 
-  // Infinite Scroll (debounced + lock)
+  /* ---------------------------------------------------
+    4️⃣ Infinite scroll & early prefetch
+  -----------------------------------------------------*/
   useInfiniteScroll(() => {
     if (!loading && hasMore && shows.length < MAX_SHOWS) {
-      runLocked(() => fetchPopular());
+      fetchPopular();
     }
   }, [loading, hasMore, shows.length]);
 
-  // Fetch details for modal
+  // ⭐ Prefetch next page early at 30% scroll
+  useEffect(() => {
+    let lastScroll = 0;
+
+    const handleScroll = () => {
+      const y = window.scrollY;
+
+      if (y <= lastScroll) {
+        lastScroll = y;
+        return;
+      }
+
+      lastScroll = y;
+
+      const ratio =
+        (window.scrollY + window.innerHeight) /
+        document.body.scrollHeight;
+
+      if (ratio > 0.3 && !loading && hasMore && shows.length < MAX_SHOWS) {
+        fetchPopular();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loading, hasMore, shows.length, fetchPopular]);
+
+  /* ---------------------------------------------------
+    5️⃣ Slow-lane fetch for modal details
+  -----------------------------------------------------*/
   const handleShowClick = async (show) => {
     try {
-      const res = await fetch(
+      const detailsRes = await fetch(`${API_BASE}/titles/${show.id}`);
+      const details = await detailsRes.json();
+
+      const platformsRes = await fetch(
         `${API_BASE}/titles/${show.id}/sources?country=${country}`
       );
-      const data = await res.json();
-      setSelectedShow({ ...show, platforms: data.platforms || [] });
-    } catch {
-      console.error("Error fetching show details");
+      const platformsData = await platformsRes.json();
+
+      setSelectedShow({
+        ...show,
+        ...details,
+        platforms: platformsData.platforms || [],
+      });
+    } catch (err) {
+      console.error("❌ Error fetching show details:", err);
     }
   };
 
+  /* ---------------------------------------------------
+    6️⃣ Geo detection wait screen
+  -----------------------------------------------------*/
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -144,21 +182,19 @@ export default function PopularPage() {
     );
   }
 
+  /* ---------------------------------------------------
+    7️⃣ Render UI
+  -----------------------------------------------------*/
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar />
 
       <main className="p-8">
-        <h1
-          className="
-            flex items-center gap-3 mb-10
-            text-3xl font-bold
-            justify-center md:justify-start
-            text-center md:text-left"
-        >
+        <h1 className="flex items-center gap-3 mb-10 text-3xl font-bold justify-center md:justify-start">
           <span className="text-red-400 tracking-wide drop-shadow-[0_0_10px_#ef4444]">
             Popular in
           </span>
+
           <img
             src={`https://flagcdn.com/w40/${country?.toLowerCase()}.png`}
             alt={country}

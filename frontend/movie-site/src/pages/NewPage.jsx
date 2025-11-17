@@ -10,8 +10,13 @@ import useScrollLockDuringFetch from "../hooks/useScrollLockDuringFetch";
 import { fetchShowsGeneric } from "../hooks/useFetchShows";
 
 const API_BASE = import.meta.env.VITE_API_URL;
-const PAGE_LIMIT = 20;
+
+// ⭐ FETCH EXACTLY 9 SHOWS PER PAGE (same as HomePage)
+const PAGE_LIMIT = 9;
 const MAX_SHOWS = 102;
+
+// ⭐ Fast-lane fields (only what the grid needs)
+const FAST_FIELDS = "id,title,poster,backdrop,year,type";
 
 const dedupe = (arr) =>
   Array.from(new Map(arr.map((s) => [s.id, s])).values());
@@ -19,7 +24,6 @@ const dedupe = (arr) =>
 export default function NewPage() {
   const { country, countryDetected } = useCountry();
   const { getCache, setCache } = useCachedShows("new", country);
-
   const { runLocked } = useScrollLockDuringFetch();
 
   const [shows, setShows] = useState([]);
@@ -29,9 +33,12 @@ export default function NewPage() {
   const [error, setError] = useState("");
   const [selectedShow, setSelectedShow] = useState(null);
 
-  // Load cache on navigation or country change
+  /* ---------------------------------------------------
+    1️⃣ Load from cache if available
+  -----------------------------------------------------*/
   useEffect(() => {
     const cache = getCache();
+
     if (cache) {
       setShows(cache.results);
       setPage(cache.nextPage ?? 2);
@@ -43,12 +50,13 @@ export default function NewPage() {
     }
   }, [country]);
 
-  // Fetch one page of new releases
+  /* ---------------------------------------------------
+    2️⃣ Fast-lane fetch (minimal show fields)
+  -----------------------------------------------------*/
   const fetchNewTitles = useCallback(
     async (reset = false) => {
       if (!countryDetected || loading) return;
 
-      // stop at 102 shows
       if (!reset && shows.length >= MAX_SHOWS) {
         setHasMore(false);
         return;
@@ -59,30 +67,32 @@ export default function NewPage() {
 
       const currentPage = reset ? 1 : page;
 
-      const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}`;
+      // ⭐ Add fields= for lightweight fetch
+      const endpoint = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}&fields=${FAST_FIELDS}`;
 
       try {
-        const { results: fresh, hasMore: apiMore } = await fetchShowsGeneric(
+        const { results: fresh } = await fetchShowsGeneric(
           endpoint,
           reset ? [] : shows
         );
 
+        if (!fresh.length) {
+          setHasMore(false);
+          return;
+        }
+
         let merged = reset ? fresh : dedupe([...shows, ...fresh]);
 
-        // Hard cap at 102
         if (merged.length >= MAX_SHOWS) {
           merged = merged.slice(0, MAX_SHOWS);
           setHasMore(false);
-        } else {
-          setHasMore(apiMore);
         }
 
         setShows(merged);
-        setCache(merged, currentPage + 1, apiMore);
-
+        setCache(merged, currentPage + 1, true);
         setPage(currentPage + 1);
       } catch (err) {
-        console.error("Error fetching new releases:", err);
+        console.error("❌ Error fetching new releases:", err);
         setError("Error fetching new releases");
       } finally {
         setLoading(false);
@@ -91,43 +101,83 @@ export default function NewPage() {
     [country, countryDetected, page, shows, loading]
   );
 
-  // Initial load (page 1 only)
+  /* ---------------------------------------------------
+    3️⃣ Initial fast-lane preload
+  -----------------------------------------------------*/
   useEffect(() => {
     if (!countryDetected) return;
     if (getCache()) return;
 
-    const loadFirstPage = async () => {
-      setLoading(true);
-
-      try {
-        const url = `${API_BASE}/titles/new?country=${country}&limit=${PAGE_LIMIT}&page=1`;
-        const { results } = await fetchShowsGeneric(url);
-
-        const capped = results.slice(0, MAX_SHOWS);
-
-        setShows(capped);
-        setPage(2);
-        setHasMore(capped.length < MAX_SHOWS);
-
-        setCache(capped, 2, capped.length < MAX_SHOWS);
-      } catch (err) {
-        console.error("Failed to load new releases:", err);
-        setError("Failed to load new releases");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadFirstPage();
+    fetchNewTitles(true); // ⭐ reset = true → first page
   }, [countryDetected, country]);
 
-  // Smooth mobile-safe infinite scroll
+  /* ---------------------------------------------------
+    4️⃣ Infinite Scroll + Early Prefetch
+  -----------------------------------------------------*/
   useInfiniteScroll(() => {
     if (!loading && hasMore && shows.length < MAX_SHOWS) {
-      runLocked(() => fetchNewTitles());
+      fetchNewTitles();
     }
   }, [loading, hasMore, shows.length]);
 
+  // ⭐ Prefetch next page when user scrolls 30%
+  useEffect(() => {
+    let lastScroll = 0;
+
+    const handleScroll = () => {
+      const current = window.scrollY;
+
+      if (current <= lastScroll) {
+        lastScroll = current;
+        return;
+      }
+
+      lastScroll = current;
+
+      const scrolledRatio =
+        (window.scrollY + window.innerHeight) /
+        document.body.scrollHeight;
+
+      if (
+        scrolledRatio > 0.3 &&
+        !loading &&
+        hasMore &&
+        shows.length < MAX_SHOWS
+      ) {
+        fetchNewTitles();
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loading, hasMore, shows.length, fetchNewTitles]);
+
+  /* ---------------------------------------------------
+    5️⃣ Slow-lane fetch: full details for modal
+  -----------------------------------------------------*/
+  const handleShowClick = async (show) => {
+    try {
+      const detailsRes = await fetch(`${API_BASE}/titles/${show.id}`);
+      const details = await detailsRes.json();
+
+      const platformsRes = await fetch(
+        `${API_BASE}/titles/${show.id}/sources?country=${country}`
+      );
+      const platformData = await platformsRes.json();
+
+      setSelectedShow({
+        ...show,
+        ...details,
+        platforms: platformData.platforms || [],
+      });
+    } catch (err) {
+      console.error("❌ Error loading details:", err);
+    }
+  };
+
+  /* ---------------------------------------------------
+    6️⃣ Geo detection waiting screen
+  -----------------------------------------------------*/
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -136,19 +186,15 @@ export default function NewPage() {
     );
   }
 
+  /* ---------------------------------------------------
+    7️⃣ Render UI
+  -----------------------------------------------------*/
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar />
 
       <main className="p-8">
-        <h1
-          className="
-            flex items-center gap-3 mb-10
-            text-3xl font-bold
-            justify-center md:justify-start
-            text-center md:text-left
-          "
-        >
+        <h1 className="flex items-center gap-3 mb-10 text-3xl font-bold justify-center md:justify-start">
           <span className="text-red-400 tracking-wide drop-shadow-[0_0_10px_#ef4444]">
             New Releases in
           </span>
@@ -165,7 +211,7 @@ export default function NewPage() {
           loading={loading}
           error={error}
           emptyMessage="No new releases found."
-          onShowClick={setSelectedShow}
+          onShowClick={handleShowClick} // ⭐ same as HomePage
         />
 
         {selectedShow && (
