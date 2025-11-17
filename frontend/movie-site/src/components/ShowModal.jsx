@@ -20,6 +20,27 @@ function ShowModal({ show, country, onClose }) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  useEffect(() => {
+    // Disable background scroll
+    document.body.style.overflow = "hidden";
+
+    // Re-enable scroll when modal closes
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
+
+  useEffect(() => {
+    const preventScroll = (e) => e.preventDefault();
+    document.body.addEventListener("touchmove", preventScroll, { passive: false });
+
+    return () => {
+      document.body.removeEventListener("touchmove", preventScroll);
+    };
+  }, []);
+
+
+
   // Fetch platforms in background
   useEffect(() => {
     if (!show?.id || show.platforms) return;
