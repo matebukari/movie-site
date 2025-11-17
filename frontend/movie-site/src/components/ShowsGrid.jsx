@@ -53,8 +53,10 @@ export default function ShowsGrid({
 
       {/* Dynamic-sized "Loading more" skeleton row */}
       {loading && shows.length > 0 && (
-        <div className="grid gap-6 mt-6"
-             style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        <div
+          className="grid gap-6 mt-6"
+          style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
+        >
           {Array.from({ length: columns }).map((_, i) => (
             <SkeletonCard key={`loading-more-${i}`} />
           ))}

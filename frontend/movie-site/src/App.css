@@ -36,3 +36,26 @@
 .slide-up {
   animation: slideUp 0.28s ease-out forwards;
 }
+
+/* 🎬 Netflix-style minimal scrollbar */
+.modal-scroll::-webkit-scrollbar {
+  width: 6px;             /* very thin */
+}
+
+.modal-scroll::-webkit-scrollbar-track {
+  background: transparent; /* barely visible */
+}
+
+.modal-scroll::-webkit-scrollbar-thumb {
+  background: #555;        /* muted gray like Netflix */
+}
+
+.modal-scroll::-webkit-scrollbar-thumb:hover {
+  background: #777;        /* slightly lighter on hover */
+}
+
+/* Firefox support */
+.modal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #555 transparent;
+}

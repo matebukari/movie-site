@@ -92,7 +92,8 @@ function ShowModal({ show, country, onClose }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
             className="relative bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full 
-                       max-h-[90vh] overflow-y-auto"
+           max-h-[90vh] overflow-y-auto modal-scroll"
+
           >
             {/* Banner */}
             <div className="relative">
