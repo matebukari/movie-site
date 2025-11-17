@@ -1,5 +1,3 @@
-const MAX_SHOWS = 102;
-
 export async function fetchShowsGeneric(endpoint, prevShows = []) {
   const res = await fetch(endpoint);
   const data = await res.json();

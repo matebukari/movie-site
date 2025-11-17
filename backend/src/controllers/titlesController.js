@@ -4,6 +4,7 @@ import {
   fetchShowSources,
   fetchNewReleases,
   fetchPopularShows,
+  fetchFullShowDetails
 } from "../services/index.js"; 
 
 // Search shows by title
@@ -121,5 +122,23 @@ export const getPopularTitles = async (req, res) => {
   } catch (error) {
     console.error("❌ Error in getPopularTitles:", error.message);
     res.status(500).json({ error: "Server error fetching popular shows" });
+  }
+};
+
+
+export const getShowDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const details = await fetchFullShowDetails(id);
+
+    if (!details) {
+      return res.status(404).json({ error: "Show not found" });
+    }
+
+    res.json(details);
+  } catch (err) {
+    console.error("❌ Error in getShowDetails:", err.message);
+    res.status(500).json({ error: "Server error fetching show details" });
   }
 };
