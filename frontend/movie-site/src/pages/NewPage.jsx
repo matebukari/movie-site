@@ -17,7 +17,7 @@ export default function NewPage() {
   const { selectedShow, setSelectedShow, loadShowDetails } = useShowDetails(country);
   const { getCache, setCache } = useCachedShows("new", country);
 
-  const [searchQuery] = useState(""); // new releases page does not use search
+  const [searchQuery, setSearchQuery] = useState("");
 
   const {
     shows,
@@ -38,7 +38,9 @@ export default function NewPage() {
   const fetchNew = (reset = false) =>
     fetchPage({
       reset,
-      endpoint: "/titles/new",
+      endpoint: searchQuery.trim()
+        ? `/titles/search?query=${encodeURIComponent(searchQuery)}`
+        : `/titles/by-country`,
     });
 
   // Load CACHE first
@@ -81,7 +83,7 @@ export default function NewPage() {
   // Render UI
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
-      <Navbar />
+      <Navbar searchQuery={searchQuery} setSearchQuery={setSearchQuery} />
 
       <main className="p-8">
         <h1 className="flex items-center gap-3 mb-10 text-3xl font-bold justify-center md:justify-start">

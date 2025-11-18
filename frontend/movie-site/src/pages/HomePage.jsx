@@ -49,7 +49,6 @@ export default function HomePage() {
 
     const cache = getCache();
     if (cache && !searchQuery.trim()) {
-      console.log("💾 Using cached shows");
       setShows(cache.results);
       setHasMore(cache.hasMore);
       return;
