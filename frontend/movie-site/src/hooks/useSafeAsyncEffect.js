@@ -1,8 +1,6 @@
 import { useEffect, useRef } from "react";
 
-/**
- * Debounced infinite scroll listener
- */
+//Debounced infinite scroll listener
 export default function useDebouncedInfiniteScroll(callback, deps = []) {
   const debounceRef = useRef(null);
 

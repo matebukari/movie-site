@@ -34,10 +34,8 @@ const LOGO_MAP = {
   starz: "starz",
 };
 
-/**
-  Returns a platform logo from /public/logos/
-  Returns null if no known logo exists.
-*/
+// Returns a platform logo from /public/logos/
+// Returns null if no known logo exists.
 
 export function getPlatformLogo(name) {
   if (!name) return null;
@@ -68,9 +66,7 @@ export function getPlatformLogo(name) {
   return null;
 }
 
-/**
-  Normalizes platform names and removes duplicates.
-*/
+// Normalizes platform names and removes duplicates.
 export function normalizePlatforms(list = []) {
   const seen = new Set();
   return list
@@ -124,7 +120,7 @@ export function normalizePlatforms(list = []) {
     });
 }
 
-/** Capitalize each word for display */
+// Capitalize each word for display
 function capitalizeWords(str = "") {
   return str
     .split(" ")

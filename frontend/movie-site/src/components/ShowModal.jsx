@@ -9,7 +9,7 @@ function ShowModal({ show, country, onClose }) {
 
   // Local state for platform details
   const [platforms, setPlatforms] = useState(show.platforms || null);
-  const [details] = useState(show); // static for instant UI
+  const [details] = useState(show);
   const [hdLoaded, setHdLoaded] = useState(false);
   const [loadingPlatforms, setLoadingPlatforms] = useState(!show.platforms);
 
@@ -79,7 +79,7 @@ function ShowModal({ show, country, onClose }) {
       : `${details.runtime} min`;
   }
 
-  // Low-res placeholder (poster) → smooth HD backdrop swap
+  // Low-res placeholder (poster) → HD backdrop swap
   const lowResImg = details?.poster;
   const fullResImg = details?.backdrop;
 

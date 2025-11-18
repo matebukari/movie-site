@@ -37,21 +37,21 @@
   animation: slideUp 0.28s ease-out forwards;
 }
 
-/* 🎬 Netflix-style minimal scrollbar */
+/* minimal scrollbar */
 .modal-scroll::-webkit-scrollbar {
-  width: 6px;             /* very thin */
+  width: 6px;      
 }
 
 .modal-scroll::-webkit-scrollbar-track {
-  background: transparent; /* barely visible */
+  background: transparent; 
 }
 
 .modal-scroll::-webkit-scrollbar-thumb {
-  background: #555;        /* muted gray like Netflix */
+  background: #555;
 }
 
 .modal-scroll::-webkit-scrollbar-thumb:hover {
-  background: #777;        /* slightly lighter on hover */
+  background: #777; 
 }
 
 /* Firefox support */

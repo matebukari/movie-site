@@ -1,179 +1,73 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import ShowModal from "../components/ShowModal";
 import ShowsGrid from "../components/ShowsGrid";
 import { useCountry } from "../context/CountryContext";
 
-import useCachedShows from "../hooks/useCachedShows";
+import useShowFetcher from "../hooks/useShowFetcher";
 import useInfiniteScroll from "../hooks/useInfiniteScroll";
 import useScrollLockDuringFetch from "../hooks/useScrollLockDuringFetch";
-import { fetchShowsGeneric } from "../hooks/useFetchShows";
-
-const API_BASE = import.meta.env.VITE_API_URL;
-
-// ⭐ Fetch exactly 9 shows per page (matches screen grid)
-const PAGE_LIMIT = 9;
-const MAX_SHOWS = 102;
-
-// ⭐ Lightweight fields for grid cards
-const FAST_FIELDS = "id,title,poster,backdrop,year,type";
-
-const dedupe = (arr) =>
-  Array.from(new Map(arr.map((s) => [s.id, s])).values());
+import useScrollPrefetch from "../hooks/useScrollPrefetch";
+import useShowDetails from "../hooks/useShowDetails";
+import useCachedShows from "../hooks/useCachedShows";
 
 export default function PopularPage() {
   const { country, countryDetected } = useCountry();
+  const { runLocked } = useScrollLockDuringFetch();
+  const { selectedShow, setSelectedShow, loadShowDetails } = useShowDetails(country);
   const { getCache, setCache } = useCachedShows("popular", country);
 
-  const { runLocked } = useScrollLockDuringFetch();
+  const {
+    shows,
+    setShows,
+    loading,
+    hasMore,
+    setHasMore,
+    error,
+    fetchPage
+  } = useShowFetcher({
+    country,
+    countryDetected,
+    setCache,
+    runLocked
+  });
 
-  const [shows, setShows] = useState([]);
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [hasMore, setHasMore] = useState(true);
-  const [error, setError] = useState("");
-  const [selectedShow, setSelectedShow] = useState(null);
+  // main fetcher
+  const fetchPopular = (reset = false) =>
+    fetchPage({
+      reset,
+      endpoint: "/titles/popular"
+    });
 
-  /* ---------------------------------------------------
-    1️⃣ Load from cache if available
-  -----------------------------------------------------*/
-  useEffect(() => {
-    const cache = getCache();
-
-    if (cache) {
-      setShows(cache.results);
-      setPage(cache.nextPage ?? 2);
-      setHasMore(cache.hasMore ?? true);
-    } else {
-      setShows([]);
-      setPage(1);
-      setHasMore(true);
-    }
-  }, [country]);
-
-  /* ---------------------------------------------------
-    2️⃣ Fast-lane fetch: minimal card data
-  -----------------------------------------------------*/
-  const fetchPopular = useCallback(
-    async (reset = false) => {
-      if (!countryDetected || loading) return;
-
-      if (!reset && shows.length >= MAX_SHOWS) {
-        setHasMore(false);
-        return;
-      }
-
-      setLoading(true);
-      setError("");
-
-      const currentPage = reset ? 1 : page;
-
-      const endpoint = `${API_BASE}/titles/popular?country=${country}&limit=${PAGE_LIMIT}&page=${currentPage}&fields=${FAST_FIELDS}`;
-
-      try {
-        const { results: newResults } = await fetchShowsGeneric(
-          endpoint,
-          reset ? [] : shows
-        );
-
-        if (!newResults.length) {
-          setHasMore(false);
-          return;
-        }
-
-        let merged = reset ? newResults : dedupe([...shows, ...newResults]);
-
-        if (merged.length >= MAX_SHOWS) {
-          merged = merged.slice(0, MAX_SHOWS);
-          setHasMore(false);
-        }
-
-        setShows(merged);
-        setCache(merged, currentPage + 1, true);
-
-        setPage(currentPage + 1);
-      } catch (err) {
-        console.error("Error fetching popular:", err);
-        setError("Error loading popular shows");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [country, countryDetected, page, shows, loading]
-  );
-
-  /* ---------------------------------------------------
-    3️⃣ Initial fast-lane fetch
-  -----------------------------------------------------*/
+  // Load CACHE first
   useEffect(() => {
     if (!countryDetected) return;
-    if (getCache()) return;
 
-    fetchPopular(true); // reset = true → page 1
+    const cache = getCache();
+    if (cache) {
+      console.log("💾 Using cached POPULAR shows");
+      setShows(cache.results);
+      setHasMore(cache.hasMore);
+      return;
+    }
+
+    // No cache → fetch fresh
+    fetchPopular(true);
   }, [countryDetected, country]);
 
-  /* ---------------------------------------------------
-    4️⃣ Infinite scroll & early prefetch
-  -----------------------------------------------------*/
+  // Infinite scroll
   useInfiniteScroll(() => {
-    if (!loading && hasMore && shows.length < MAX_SHOWS) {
-      fetchPopular();
-    }
+    if (!loading && hasMore) fetchPopular();
   }, [loading, hasMore, shows.length]);
 
-  // ⭐ Prefetch next page early at 30% scroll
-  useEffect(() => {
-    let lastScroll = 0;
+  // Prefetch at 30%
+  useScrollPrefetch(
+    () => runLocked(() => fetchPopular()),
+    { loading, hasMore, length: shows.length, max: 102 },
+    0.3
+  );
 
-    const handleScroll = () => {
-      const y = window.scrollY;
-
-      if (y <= lastScroll) {
-        lastScroll = y;
-        return;
-      }
-
-      lastScroll = y;
-
-      const ratio =
-        (window.scrollY + window.innerHeight) /
-        document.body.scrollHeight;
-
-      if (ratio > 0.3 && !loading && hasMore && shows.length < MAX_SHOWS) {
-        fetchPopular();
-      }
-    };
-
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, [loading, hasMore, shows.length, fetchPopular]);
-
-  /* ---------------------------------------------------
-    5️⃣ Slow-lane fetch for modal details
-  -----------------------------------------------------*/
-  const handleShowClick = async (show) => {
-    try {
-      const detailsRes = await fetch(`${API_BASE}/titles/${show.id}`);
-      const details = await detailsRes.json();
-
-      const platformsRes = await fetch(
-        `${API_BASE}/titles/${show.id}/sources?country=${country}`
-      );
-      const platformsData = await platformsRes.json();
-
-      setSelectedShow({
-        ...show,
-        ...details,
-        platforms: platformsData.platforms || [],
-      });
-    } catch (err) {
-      console.error("❌ Error fetching show details:", err);
-    }
-  };
-
-  /* ---------------------------------------------------
-    6️⃣ Geo detection wait screen
-  -----------------------------------------------------*/
+  // Waiting screen while detecting region
   if (!countryDetected && shows.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950 text-gray-400">
@@ -182,9 +76,7 @@ export default function PopularPage() {
     );
   }
 
-  /* ---------------------------------------------------
-    7️⃣ Render UI
-  -----------------------------------------------------*/
+  // Render UI
   return (
     <div className="min-h-screen bg-gray-950 text-gray-100">
       <Navbar />
@@ -207,7 +99,7 @@ export default function PopularPage() {
           loading={loading}
           error={error}
           emptyMessage="No popular shows found."
-          onShowClick={handleShowClick}
+          onShowClick={loadShowDetails}
         />
 
         {selectedShow && (
