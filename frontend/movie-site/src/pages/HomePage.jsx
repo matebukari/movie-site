@@ -16,9 +16,7 @@ export default function HomePage() {
   const { runLocked } = useScrollLockDuringFetch();
   const { selectedShow, setSelectedShow, loadShowDetails } = useShowDetails(country);
   const { getCache, setCache } = useCachedShows("shows", country);
-
   const [searchQuery, setSearchQuery] = useState("");
-
   const {
     shows,
     setShows,

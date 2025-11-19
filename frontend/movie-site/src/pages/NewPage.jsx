@@ -16,9 +16,7 @@ export default function NewPage() {
   const { runLocked } = useScrollLockDuringFetch();
   const { selectedShow, setSelectedShow, loadShowDetails } = useShowDetails(country);
   const { getCache, setCache } = useCachedShows("new", country);
-
   const [searchQuery, setSearchQuery] = useState("");
-
   const {
     shows,
     setShows,
@@ -38,9 +36,7 @@ export default function NewPage() {
   const fetchNew = (reset = false) =>
     fetchPage({
       reset,
-      endpoint: searchQuery.trim()
-        ? `/titles/search?query=${encodeURIComponent(searchQuery)}`
-        : `/titles/by-country`,
+      endpoint: `/titles/new`,
     });
 
   // Load CACHE first

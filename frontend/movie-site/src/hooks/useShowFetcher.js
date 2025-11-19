@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import { fetchShowsGeneric } from "./useFetchShows";
 
 const FAST_FIELDS = "id,title,poster,backdrop,year,type";
-const API_BASE = import.meta.env.VITE_API_URL; // ⭐ FIXED
+const API_BASE = import.meta.env.VITE_API_URL;
 
 export default function useShowFetcher({
   country,
@@ -65,7 +65,7 @@ export default function useShowFetcher({
           }
 
           setShows(merged);
-          setCache(merged, currentPage + 1, true);
+          setCache?.(merged, currentPage + 1, true);
           setPage(currentPage + 1);
         } catch (err) {
           console.error("❌ Fetch error:", err);
@@ -75,7 +75,15 @@ export default function useShowFetcher({
         }
       });
     },
-    [country, countryDetected, page, shows, loading]
+    [
+      country,
+      countryDetected,
+      page,
+      shows,
+      loading,
+      runLocked,
+      setCache
+    ]
   );
 
   return {

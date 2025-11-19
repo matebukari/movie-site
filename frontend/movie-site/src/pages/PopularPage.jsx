@@ -16,9 +16,7 @@ export default function PopularPage() {
   const { runLocked } = useScrollLockDuringFetch();
   const { selectedShow, setSelectedShow, loadShowDetails } = useShowDetails(country);
   const { getCache, setCache } = useCachedShows("popular", country);
-
   const [searchQuery, setSearchQuery] = useState("");
-
   const {
     shows,
     setShows,
@@ -38,9 +36,7 @@ export default function PopularPage() {
   const fetchPopular = (reset = false) =>
     fetchPage({
       reset,
-      endpoint: searchQuery.trim()
-        ? `/titles/search?query=${encodeURIComponent(searchQuery)}`
-        : `/titles/by-country`,
+      endpoint: `/titles/popular`,
     });
 
   // Load CACHE first
