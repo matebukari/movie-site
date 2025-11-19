@@ -49,7 +49,6 @@ export default function NewPage() {
 
     const cache = getCache();
     if (cache) {
-      console.log("💾 Using cached NEW releases");
       setShows(cache.results);
       setHasMore(cache.hasMore);
       return;

@@ -48,8 +48,7 @@ export default function PopularPage() {
     if (!countryDetected) return;
 
     const cache = getCache();
-    if (cache) {
-      console.log("💾 Using cached POPULAR shows");
+      if (cache) {
       setShows(cache.results);
       setHasMore(cache.hasMore);
       return;
