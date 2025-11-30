@@ -8,7 +8,7 @@ function ShowModal({ show, country, onClose }) {
   const API_BASE = import.meta.env.VITE_API_URL;
 
   // Local state for platform details
-  const [platforms, setPlatforms] = useState(show.platforms || null);
+  const [platforms, setPlatforms] = useState(show.platforms || []); // default []
   const [details] = useState(show);
   const [hdLoaded, setHdLoaded] = useState(false);
   const [loadingPlatforms, setLoadingPlatforms] = useState(!show.platforms);
@@ -20,26 +20,15 @@ function ShowModal({ show, country, onClose }) {
     return () => window.removeEventListener("keydown", handleKey);
   }, [onClose]);
 
+  // Lock background scroll
   useEffect(() => {
-    // Disable background scroll
+    const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
-    // Re-enable scroll when modal closes
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = originalOverflow;
     };
   }, []);
-
-  useEffect(() => {
-    const preventScroll = (e) => e.preventDefault();
-    document.body.addEventListener("touchmove", preventScroll, { passive: false });
-
-    return () => {
-      document.body.removeEventListener("touchmove", preventScroll);
-    };
-  }, []);
-
-
 
   // Fetch platforms in background
   useEffect(() => {
@@ -49,7 +38,9 @@ function ShowModal({ show, country, onClose }) {
       try {
         setLoadingPlatforms(true);
 
-        const res = await fetch(`${API_BASE}/titles/${show.id}/sources?country=${country}`);
+        const res = await fetch(
+          `${API_BASE}/titles/${show.id}/sources?country=${country}`
+        );
         const data = await res.json();
 
         setPlatforms(data.platforms || []);
@@ -61,7 +52,7 @@ function ShowModal({ show, country, onClose }) {
     };
 
     fetchPlatforms();
-  }, [show, country]);
+  }, [show, country, API_BASE]);
 
   // Build genres
   const genres = details?.genres?.length ? details.genres.join(", ") : "Unknown";
@@ -69,7 +60,10 @@ function ShowModal({ show, country, onClose }) {
   // Runtime handling
   let runtime = null;
   const invalidValues = ["n/a", "na", "none", "-", ""];
-  if (details?.runtimeText && !invalidValues.includes(details.runtimeText.trim().toLowerCase())) {
+  if (
+    details?.runtimeText &&
+    !invalidValues.includes(details.runtimeText.trim().toLowerCase())
+  ) {
     runtime = details.type?.includes("TV")
       ? `${details.runtimeText} per episode`
       : details.runtimeText;
@@ -79,7 +73,6 @@ function ShowModal({ show, country, onClose }) {
       : `${details.runtime} min`;
   }
 
-  // Low-res placeholder (poster) → HD backdrop swap
   const lowResImg = details?.poster;
   const fullResImg = details?.backdrop;
 
@@ -113,18 +106,15 @@ function ShowModal({ show, country, onClose }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
             className="relative bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full 
-           max-h-[90vh] modal-scroll"
-
+                       max-h-[90vh] overflow-y-auto modal-scroll"
           >
             {/* Banner */}
             <div className="relative">
-              {/* Low-res image instantly visible */}
               <img
                 src={lowResImg}
                 className="w-full h-72 object-cover blur-[1px] brightness-[0.9]"
               />
 
-              {/* Full HD image loading in background */}
               {fullResImg && (
                 <img
                   src={fullResImg}
@@ -149,7 +139,6 @@ function ShowModal({ show, country, onClose }) {
 
             {/* Body */}
             <div className="p-6 space-y-5">
-              {/* If platforms/data are still loading → skeleton */}
               {loadingPlatforms ? (
                 <ModalSkeleton />
               ) : (
@@ -195,7 +184,7 @@ function ShowModal({ show, country, onClose }) {
                       Available on:
                     </h3>
 
-                    {platforms.length > 0 ? (
+                    {platforms && platforms.length > 0 ? (
                       <div className="flex flex-wrap gap-4">
                         {platforms.map((p, i) => {
                           const logo = getPlatformLogo(p);
