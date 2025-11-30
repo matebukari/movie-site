@@ -92,7 +92,7 @@ function ShowModal({ show, country, onClose }) {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.15 }}
-          className="fixed inset-0 bg-black/70 flex items-center justify-center z-999 p-4 overflow-y-auto"
+          className="fixed inset-0 bg-black/70 flex items-center justify-center z-999 p-4"
         >
           {/* Close button */}
           <button
@@ -113,7 +113,7 @@ function ShowModal({ show, country, onClose }) {
             exit={{ opacity: 0 }}
             transition={{ duration: 0.18 }}
             className="relative bg-gray-900 rounded-2xl shadow-2xl max-w-4xl w-full 
-           max-h-[90vh] overflow-y-auto modal-scroll"
+           max-h-[90vh] modal-scroll"
 
           >
             {/* Banner */}
